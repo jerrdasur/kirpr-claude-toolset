@@ -34,8 +34,9 @@ export JIRA_EMAIL=you@example.com  # optional, for Jira Cloud basic auth
 | `/kirpr:tasks-decompose SAS-200` | Decompose a tracker task into detailed subtask specs |
 | `/kirpr:tasks-review SAS-200` | Critical review of an existing decomposition with quality scoring |
 | `/kirpr:tasks-adapt SAS-200` | Adapt an existing decomposition to changed requirements |
-| `/kirpr:adr-init` | Initialize ADR infrastructure in a repository |
+| `/kirpr:adr-init` | Initialize ADR infrastructure and services map in a repository |
 | `/kirpr:adr-write SAS-200` | Write an ADR with alternatives analysis and self-review |
+| `/kirpr:adr-review SAS-200` | Cross-repo ADR review with traffic-light scoring (R1-R7) |
 
 ## Uninstall
 
