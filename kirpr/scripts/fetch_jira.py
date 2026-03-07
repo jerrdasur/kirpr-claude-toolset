@@ -14,11 +14,11 @@ import base64
 import urllib.request
 import urllib.error
 
-FIELDS = "summary,description,comment,issuelinks,subtasks"
+FIELDS = "summary,description,reporter,timetracking,comment,issuelinks,subtasks"
 
 
 def fetch_issue(issue_id: str, base_url: str, token: str, email: str | None) -> dict:
-    url = f"{base_url}/rest/api/2/issue/{issue_id}?fields={FIELDS}"
+    url = f"{base_url}/rest/api/2/issue/{issue_id}?fields={FIELDS}&expand=changelog"
 
     if email:
         # Jira Cloud: basic auth with email:token
@@ -40,6 +40,32 @@ def fetch_issue(issue_id: str, base_url: str, token: str, email: str | None) -> 
         return json.loads(resp.read().decode())
 
 
+def format_changelog(data: dict) -> list:
+    lines = []
+    changelog = data.get("changelog", {})
+    histories = changelog.get("histories") or []
+    if not histories:
+        return lines
+    lines.append("## Change History")
+    lines.append("")
+    for h in histories:
+        author = h.get("author", {})
+        name = author.get("displayName") or author.get("name") or "Unknown"
+        created = h.get("created", "")[:16].replace("T", " ")
+        items = h.get("items") or []
+        if not items:
+            continue
+        lines.append(f"### {created} — {name}")
+        lines.append("")
+        for item in items:
+            field = item.get("field", "?")
+            from_str = item.get("fromString") or "—"
+            to_str = item.get("toString") or "—"
+            lines.append(f"- **{field}**: {from_str} → {to_str}")
+        lines.append("")
+    return lines
+
+
 def format_markdown(data: dict, base_url: str) -> str:
     lines = []
     fields = data.get("fields", {})
@@ -50,11 +76,43 @@ def format_markdown(data: dict, base_url: str) -> str:
     lines.append(f"> [{key}]({base_url}/browse/{key})")
     lines.append("")
 
+    reporter = fields.get("reporter") or {}
+    reporter_name = reporter.get("displayName") or reporter.get("name") or ""
+    if reporter_name:
+        lines.append(f"**Author:** {reporter_name}")
+        lines.append("")
+
+    timetracking = fields.get("timetracking") or {}
+    original = timetracking.get("originalEstimate") or ""
+    if original:
+        lines.append(f"**Estimation:** {original}")
+        lines.append("")
+
     desc = fields.get("description") or ""
     if desc:
         lines.append("## Description")
         lines.append("")
         lines.append(desc)
+        lines.append("")
+
+    issuelinks = fields.get("issuelinks") or []
+    if issuelinks:
+        lines.append("## Linked Issues")
+        lines.append("")
+        for link in issuelinks:
+            link_type = link.get("type", {}).get("name", "related to")
+            if "outwardIssue" in link:
+                issue = link["outwardIssue"]
+                direction = link.get("type", {}).get("outward", link_type)
+                issue_key = issue.get("key", "?")
+                issue_summary = issue.get("fields", {}).get("summary", "")
+                lines.append(f"- **{direction}**: [{issue_key}]({base_url}/browse/{issue_key}) — {issue_summary}")
+            if "inwardIssue" in link:
+                issue = link["inwardIssue"]
+                direction = link.get("type", {}).get("inward", link_type)
+                issue_key = issue.get("key", "?")
+                issue_summary = issue.get("fields", {}).get("summary", "")
+                lines.append(f"- **{direction}**: [{issue_key}]({base_url}/browse/{issue_key}) — {issue_summary}")
         lines.append("")
 
     comment_data = fields.get("comment", {})
@@ -109,7 +167,11 @@ def main():
         print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
-    print(format_markdown(data, base_url))
+    md = format_markdown(data, base_url)
+    changelog_lines = format_changelog(data)
+    if changelog_lines:
+        md += "\n" + "\n".join(changelog_lines)
+    print(md)
 
 
 if __name__ == "__main__":

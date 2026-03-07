@@ -8,60 +8,57 @@ KIRPR_DIR="$CLAUDE_DIR/kirpr"
 
 echo "Installing kirpr from $REPO_DIR"
 
-# Create target directories
+# --- Backup tracker.md if it exists ---
+TRACKER_BACKUP=""
+if [ -f "$KIRPR_DIR/config/tracker.md" ]; then
+    TRACKER_BACKUP="$(mktemp)"
+    cp "$KIRPR_DIR/config/tracker.md" "$TRACKER_BACKUP"
+    echo "  Backed up tracker.md"
+fi
+
+# --- Clean old installation ---
+if [ -d "$COMMANDS_DIR" ]; then
+    rm -rf "$COMMANDS_DIR"
+    echo "  Removed old $COMMANDS_DIR"
+fi
+if [ -d "$KIRPR_DIR" ]; then
+    rm -rf "$KIRPR_DIR"
+    echo "  Removed old $KIRPR_DIR"
+fi
+
+# --- Create directories ---
 mkdir -p "$COMMANDS_DIR"
 mkdir -p "$KIRPR_DIR/config"
 mkdir -p "$KIRPR_DIR/scripts"
 
-# --- Symlink commands ---
+# --- Copy commands ---
 for f in "$REPO_DIR"/commands/kirpr/*.md; do
     name="$(basename "$f")"
-    target="$COMMANDS_DIR/$name"
-    if [ -L "$target" ]; then
-        rm "$target"
-    elif [ -e "$target" ]; then
-        echo "Warning: $target exists and is not a symlink, skipping (back up manually if needed)"
-        continue
-    fi
-    ln -s "$f" "$target"
-    echo "  commands/kirpr/$name -> linked"
+    cp "$f" "$COMMANDS_DIR/$name"
+    echo "  commands/kirpr/$name -> copied"
 done
 
-# --- Symlink config files (except tracker.md which is user-specific) ---
+# --- Copy config files (skip tracker.md.template) ---
 for f in "$REPO_DIR"/kirpr/config/*.md; do
     name="$(basename "$f")"
-    # Skip the template file
     [ "$name" = "tracker.md.template" ] && continue
-    target="$KIRPR_DIR/config/$name"
-    if [ -L "$target" ]; then
-        rm "$target"
-    elif [ -e "$target" ]; then
-        echo "Warning: $target exists and is not a symlink, skipping"
-        continue
-    fi
-    ln -s "$f" "$target"
-    echo "  kirpr/config/$name -> linked"
+    cp "$f" "$KIRPR_DIR/config/$name"
+    echo "  kirpr/config/$name -> copied"
 done
 
-# --- Symlink scripts ---
+# --- Copy scripts ---
 for f in "$REPO_DIR"/kirpr/scripts/*.py; do
     name="$(basename "$f")"
-    target="$KIRPR_DIR/scripts/$name"
-    if [ -L "$target" ]; then
-        rm "$target"
-    elif [ -e "$target" ]; then
-        echo "Warning: $target exists and is not a symlink, skipping"
-        continue
-    fi
-    ln -s "$f" "$target"
-    echo "  kirpr/scripts/$name -> linked"
+    cp "$f" "$KIRPR_DIR/scripts/$name"
+    echo "  kirpr/scripts/$name -> copied"
 done
 
-# --- Configure tracker (interactive, only if tracker.md doesn't exist) ---
-if [ -f "$KIRPR_DIR/config/tracker.md" ]; then
-    echo ""
-    echo "Tracker config already exists at $KIRPR_DIR/config/tracker.md, skipping setup."
-else
+# --- Restore or configure tracker ---
+if [ -n "$TRACKER_BACKUP" ] && [ -f "$TRACKER_BACKUP" ]; then
+    cp "$TRACKER_BACKUP" "$KIRPR_DIR/config/tracker.md"
+    rm "$TRACKER_BACKUP"
+    echo "  Restored tracker.md"
+elif [ ! -f "$KIRPR_DIR/config/tracker.md" ]; then
     echo ""
     echo "=== Tracker Setup ==="
     echo "Which issue tracker do you use?"

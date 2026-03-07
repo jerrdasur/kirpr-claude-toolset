@@ -1,44 +1,43 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 CLAUDE_DIR="$HOME/.claude"
 COMMANDS_DIR="$CLAUDE_DIR/commands/kirpr"
 KIRPR_DIR="$CLAUDE_DIR/kirpr"
 
-echo "Uninstalling kirpr (removing symlinks pointing to $REPO_DIR)"
+echo "Uninstalling kirpr..."
 
-removed=0
-
-remove_symlinks() {
-    local dir="$1" pattern="$2" repo_subpath="$3"
-    [ -d "$dir" ] || return 0
-    for f in "$dir"/$pattern; do
-        [ -e "$f" ] || [ -L "$f" ] || continue
-        local name
-        name="$(basename "$f")"
-        if [ -L "$f" ] && [ "$(readlink "$f")" = "$REPO_DIR/$repo_subpath/$name" ]; then
-            rm "$f"
-            echo "  Removed: $f"
-            removed=$((removed + 1))
-        fi
-    done
-}
-
-remove_symlinks "$COMMANDS_DIR" "*.md" "commands/kirpr"
-remove_symlinks "$KIRPR_DIR/config" "*.md" "kirpr/config"
-remove_symlinks "$KIRPR_DIR/scripts" "*.py" "kirpr/scripts"
-
-echo ""
-echo "Removed $removed symlinks."
-
+# --- Handle tracker.md ---
 if [ -f "$KIRPR_DIR/config/tracker.md" ]; then
-    echo "Note: tracker.md preserved (user config). Delete manually if needed:"
-    echo "  rm $KIRPR_DIR/config/tracker.md"
+    echo ""
+    echo "tracker.md contains your tracker configuration."
+    printf "Delete it too? [y/N]: "
+    read -r delete_tracker
+    if [ "$delete_tracker" != "y" ] && [ "$delete_tracker" != "Y" ]; then
+        TRACKER_SAVE="$(mktemp)"
+        cp "$KIRPR_DIR/config/tracker.md" "$TRACKER_SAVE"
+        echo "  Saved tracker.md to $TRACKER_SAVE"
+    fi
 fi
 
-# Clean up empty directories
-rmdir "$COMMANDS_DIR" 2>/dev/null && echo "Removed empty: $COMMANDS_DIR" || true
-rmdir "$KIRPR_DIR/scripts" 2>/dev/null && echo "Removed empty: $KIRPR_DIR/scripts" || true
-rmdir "$KIRPR_DIR/config" 2>/dev/null || true
-rmdir "$KIRPR_DIR" 2>/dev/null && echo "Removed empty: $KIRPR_DIR" || true
+# --- Remove directories ---
+if [ -d "$COMMANDS_DIR" ]; then
+    rm -rf "$COMMANDS_DIR"
+    echo "  Removed $COMMANDS_DIR"
+fi
+if [ -d "$KIRPR_DIR" ]; then
+    rm -rf "$KIRPR_DIR"
+    echo "  Removed $KIRPR_DIR"
+fi
+
+# --- Clean up empty parent directories ---
+rmdir "$CLAUDE_DIR/commands" 2>/dev/null && echo "  Removed empty: $CLAUDE_DIR/commands" || true
+
+echo ""
+echo "Done! kirpr has been uninstalled."
+
+if [ -n "${TRACKER_SAVE:-}" ] && [ -f "${TRACKER_SAVE:-}" ]; then
+    echo ""
+    echo "Your tracker.md was saved to: $TRACKER_SAVE"
+    echo "To restore it after reinstalling: cp $TRACKER_SAVE ~/.claude/kirpr/config/tracker.md"
+fi
