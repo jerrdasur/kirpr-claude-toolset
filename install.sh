@@ -46,6 +46,17 @@ for f in "$REPO_DIR"/kirpr/config/*.md; do
     echo "  kirpr/config/$name -> copied"
 done
 
+# --- Copy prompts ---
+if [ -d "$REPO_DIR/kirpr/prompts" ]; then
+    mkdir -p "$KIRPR_DIR/prompts"
+    for f in "$REPO_DIR"/kirpr/prompts/*.md; do
+        [ -f "$f" ] || continue
+        name="$(basename "$f")"
+        cp "$f" "$KIRPR_DIR/prompts/$name"
+        echo "  kirpr/prompts/$name -> copied"
+    done
+fi
+
 # --- Copy scripts ---
 for f in "$REPO_DIR"/kirpr/scripts/*.py; do
     name="$(basename "$f")"
