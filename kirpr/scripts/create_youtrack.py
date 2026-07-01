@@ -82,3 +82,54 @@ def validate_plan(plan: dict) -> None:
     cycle = detect_cycle(keys, edges)
     if cycle:
         raise PlanError(f"Dependency graph has a cycle: {' -> '.join(cycle)}")
+
+
+def render_dry_run(plan: dict, existing: dict) -> str:
+    parent = plan["parent"]
+    lines = ["# Dry-run: план создания задач", ""]
+    lines.append(f"**Родитель:** {parent}")
+    lines.append("")
+    lines.append("## Задачи")
+    lines.append("")
+    lines.append("| key | summary | статус |")
+    lines.append("|-----|---------|--------|")
+    for t in plan["tasks"]:
+        if t["key"] in existing:
+            status = f"уже создана ({existing[t['key']]})"
+        else:
+            status = "будет создана"
+        lines.append(f"| {t['key']} | {t['summary']} | {status} |")
+    lines.append("")
+    lines.append("## Связи иерархии (Subtask)")
+    lines.append("")
+    for t in plan["tasks"]:
+        lines.append(f"- {t['key']} → subtask of {parent}")
+    edges = plan.get("edges") or []
+    if edges:
+        lines.append("")
+        lines.append("## Связи зависимостей (Depend)")
+        lines.append("")
+        for e in edges:
+            lines.append(f"- {e['to']} depends on {e['from']}")
+    lines.append("")
+    lines.append("_dry-run: сетевых записей не выполнено._")
+    return "\n".join(lines)
+
+
+def render_report(plan: dict, mapping: dict, created_links: list) -> str:
+    lines = ["# Задачи созданы", ""]
+    lines.append("| key | issue |")
+    lines.append("|-----|-------|")
+    for t in plan["tasks"]:
+        lines.append(f"| {t['key']} | {mapping.get(t['key'], '—')} |")
+    lines.append("")
+    lines.append("## Проставленные связи")
+    lines.append("")
+    if created_links:
+        for link in created_links:
+            lines.append(f"- {link}")
+    else:
+        lines.append("_нет новых связей (все уже существовали)_")
+    lines.append("")
+    lines.append(f"**Итого:** {len(mapping)} задач, {len(created_links)} новых связей.")
+    return "\n".join(lines)

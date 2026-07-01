@@ -95,5 +95,29 @@ class TestValidatePlanRobustness(unittest.TestCase):
             cy.validate_plan(make_plan(edges=["not-a-dict"]))
 
 
+class TestRenderDryRun(unittest.TestCase):
+    def test_lists_new_tasks_and_links(self):
+        out = cy.render_dry_run(make_plan(), existing={})
+        self.assertIn("01-schema", out)
+        self.assertIn("02-model", out)
+        self.assertIn("SAS-200", out)          # parent hierarchy mentioned
+        self.assertIn("01-schema", out)         # dependency edge endpoint
+        self.assertIn("dry-run", out.lower())
+
+    def test_skips_already_created(self):
+        out = cy.render_dry_run(make_plan(), existing={"01-schema": "SAS-201"})
+        self.assertIn("SAS-201", out)           # shows it as existing
+        self.assertIn("02-model", out)          # still to be created
+
+
+class TestRenderReport(unittest.TestCase):
+    def test_report_has_ids_and_totals(self):
+        mapping = {"01-schema": "SAS-201", "02-model": "SAS-202"}
+        out = cy.render_report(make_plan(), mapping, ["SAS-201 subtask of SAS-200"])
+        self.assertIn("SAS-201", out)
+        self.assertIn("SAS-202", out)
+        self.assertIn("subtask of SAS-200", out)
+
+
 if __name__ == "__main__":
     unittest.main()
