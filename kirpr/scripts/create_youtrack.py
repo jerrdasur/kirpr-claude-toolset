@@ -208,6 +208,10 @@ class YouTrackClient:
         return issue_id
 
     def existing_link_targets(self, issue_id: str, link_type_name: str) -> set:
+        # Direction-agnostic: collapses both link directions into one set. Safe
+        # for idempotency checks because validate_plan guarantees an acyclic
+        # graph, so a reverse Depend link cannot pre-exist between freshly
+        # created issues without forming a cycle.
         fields = "linkType(name),direction,issues(idReadable)"
         data = self._request("GET", f"/api/issues/{issue_id}/links?fields={fields}") or []
         targets = set()
