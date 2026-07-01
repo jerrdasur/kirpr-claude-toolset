@@ -6,10 +6,11 @@ Usage: python3 scripts/create_youtrack.py --plan sas-200/create-plan.json [--dry
 Requires YOUTRACK_URL and YOUTRACK_TOKEN environment variables.
 """
 
+import argparse
 import json
 import os
+import sys
 import urllib.error
-import urllib.parse
 import urllib.request
 
 
@@ -274,3 +275,24 @@ def run(plan_path: str, dry_run: bool, client=None, mapping_path=None) -> str:
         created_links.append(f"{to_id} depends on {from_id}")
 
     return render_report(plan, mapping, created_links)
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Create YouTrack issues from a decomposition plan."
+    )
+    parser.add_argument("--plan", required=True, help="Path to create-plan.json")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="Preview only; no network writes.")
+    args = parser.parse_args(argv)
+    try:
+        output = run(args.plan, dry_run=args.dry_run)
+    except (PlanError, RuntimeError) as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+    print(output)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

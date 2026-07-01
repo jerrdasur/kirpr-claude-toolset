@@ -309,5 +309,33 @@ class TestRun(unittest.TestCase):
             self.assertNotIn("02-model", mapping)   # second never completed
 
 
+import io
+import contextlib
+
+
+class TestMain(unittest.TestCase):
+    def test_dry_run_via_main(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "create-plan.json")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(json.dumps(make_plan()))
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = cy.main(["--plan", p, "--dry-run"])
+            self.assertEqual(rc, 0)
+            self.assertIn("dry-run", buf.getvalue().lower())
+
+    def test_bad_plan_returns_1(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "create-plan.json")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("{ not json")
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                rc = cy.main(["--plan", p, "--dry-run"])
+            self.assertEqual(rc, 1)
+            self.assertIn("Error", err.getvalue())
+
+
 if __name__ == "__main__":
     unittest.main()
