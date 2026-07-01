@@ -247,6 +247,9 @@ class TestRun(unittest.TestCase):
             queries = [q for _, q in fc.links]
             self.assertTrue(any(q == "subtask of SAS-200" for q in queries))
             self.assertTrue(any(q.startswith("depends on") for q in queries))
+            # Direction: edge from=01-schema(SAS-201) to=02-model(SAS-202)
+            # means "02-model depends on 01-schema" → command applied to SAS-202.
+            self.assertIn(("SAS-202", "depends on SAS-201"), fc.links)
             self.assertIn("Задачи созданы", out)
 
     def test_resume_skips_already_created(self):
@@ -272,6 +275,38 @@ class TestRun(unittest.TestCase):
             cy.run(p, dry_run=False, client=fc)
             # no "subtask of" command should be issued since both children already linked
             self.assertFalse(any(q == "subtask of SAS-200" for _, q in fc.links))
+
+    def test_idempotent_depend_link_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            fc = FakeClient()
+            # Pretend the dependency link already exists: for DEPEND type,
+            # SAS-202 already depends on SAS-201 (the from_id).
+            def existing(issue_id, link_type):
+                if link_type == cy.LINK_TYPE_DEPEND:
+                    return {"SAS-201"}
+                return set()
+            fc.existing_link_targets = existing
+            cy.run(p, dry_run=False, client=fc)
+            self.assertFalse(any(q.startswith("depends on") for _, q in fc.links))
+
+    def test_incremental_save_persists_before_failure(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            fc = FakeClient()
+            orig_create = fc.create_issue
+            state = {"n": 0}
+            def failing_create(project_id, summary, description):
+                state["n"] += 1
+                if state["n"] == 2:
+                    raise RuntimeError("boom")
+                return orig_create(project_id, summary, description)
+            fc.create_issue = failing_create
+            with self.assertRaises(RuntimeError):
+                cy.run(p, dry_run=False, client=fc)
+            mapping = cy.load_mapping(os.path.join(d, ".created.json"))
+            self.assertIn("01-schema", mapping)     # first creation persisted
+            self.assertNotIn("02-model", mapping)   # second never completed
 
 
 if __name__ == "__main__":
