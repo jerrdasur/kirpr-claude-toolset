@@ -54,6 +54,8 @@ def detect_cycle(keys, edges):
 
 
 def validate_plan(plan: dict) -> None:
+    if not isinstance(plan, dict):
+        raise PlanError("Plan must be a JSON object.")
     if not plan.get("parent"):
         raise PlanError("Plan is missing a non-empty 'parent'.")
     tasks = plan.get("tasks")
@@ -61,6 +63,8 @@ def validate_plan(plan: dict) -> None:
         raise PlanError("Plan 'tasks' must be a non-empty list.")
     keys = []
     for t in tasks:
+        if not isinstance(t, dict):
+            raise PlanError(f"Task must be an object: {t!r}")
         for field in ("key", "summary", "description"):
             if not t.get(field):
                 raise PlanError(f"Task is missing '{field}': {t!r}")
@@ -70,6 +74,8 @@ def validate_plan(plan: dict) -> None:
     edges = plan.get("edges") or []
     keyset = set(keys)
     for e in edges:
+        if not isinstance(e, dict):
+            raise PlanError(f"Edge must be an object: {e!r}")
         for field in ("from", "to"):
             if e.get(field) not in keyset:
                 raise PlanError(f"Edge references unknown key '{e.get(field)}': {e!r}")

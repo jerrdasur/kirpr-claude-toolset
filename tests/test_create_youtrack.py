@@ -1,5 +1,6 @@
 import os
 import sys
+import tempfile
 import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "kirpr", "scripts"))
@@ -64,6 +65,34 @@ class TestDetectCycle(unittest.TestCase):
     def test_cycle_returns_path(self):
         cyc = cy.detect_cycle(["a", "b"], [{"from": "a", "to": "b"}, {"from": "b", "to": "a"}])
         self.assertIsNotNone(cyc)
+
+
+class TestLoadPlan(unittest.TestCase):
+    def test_bad_json_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "plan.json")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write("{ not json")
+            with self.assertRaises(cy.PlanError):
+                cy.load_plan(p)
+
+    def test_missing_file_raises(self):
+        with self.assertRaises(cy.PlanError):
+            cy.load_plan("/nonexistent/dir/plan.json")
+
+
+class TestValidatePlanRobustness(unittest.TestCase):
+    def test_non_dict_plan_raises(self):
+        with self.assertRaises(cy.PlanError):
+            cy.validate_plan(["not", "a", "dict"])
+
+    def test_non_dict_task_raises(self):
+        with self.assertRaises(cy.PlanError):
+            cy.validate_plan(make_plan(tasks=["not-a-dict"], edges=[]))
+
+    def test_non_dict_edge_raises(self):
+        with self.assertRaises(cy.PlanError):
+            cy.validate_plan(make_plan(edges=["not-a-dict"]))
 
 
 if __name__ == "__main__":
