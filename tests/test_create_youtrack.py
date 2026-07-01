@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 import tempfile
@@ -128,6 +129,69 @@ class TestMappingIO(unittest.TestCase):
             p = os.path.join(d, ".created.json")
             cy.save_mapping(p, {"01-schema": "SAS-201"})
             self.assertEqual(cy.load_mapping(p), {"01-schema": "SAS-201"})
+
+
+class FakeTransport:
+    """Records requests and returns canned (status, body) responses."""
+
+    def __init__(self, responses):
+        self.responses = list(responses)   # list of (status, dict-or-list)
+        self.calls = []
+
+    def __call__(self, method, url, headers, data):
+        self.calls.append({"method": method, "url": url, "headers": headers, "data": data})
+        status, payload = self.responses.pop(0)
+        return status, json.dumps(payload).encode("utf-8")
+
+
+class TestYouTrackClient(unittest.TestCase):
+    def test_resolve_project_id(self):
+        tr = FakeTransport([(200, {"project": {"id": "0-5", "shortName": "SAS"}})])
+        c = cy.YouTrackClient("https://yt.example.com", "tok", transport=tr)
+        self.assertEqual(c.resolve_project_id("SAS-200"), "0-5")
+        self.assertEqual(tr.calls[0]["method"], "GET")
+        self.assertIn("/api/issues/SAS-200", tr.calls[0]["url"])
+        self.assertEqual(tr.calls[0]["headers"]["Authorization"], "Bearer tok")
+
+    def test_create_issue_posts_body(self):
+        tr = FakeTransport([(200, {"idReadable": "SAS-201"})])
+        c = cy.YouTrackClient("https://yt.example.com", "tok", transport=tr)
+        self.assertEqual(c.create_issue("0-5", "Schema", "body"), "SAS-201")
+        call = tr.calls[0]
+        self.assertEqual(call["method"], "POST")
+        self.assertIn("/api/issues", call["url"])
+        body = json.loads(call["data"].decode("utf-8"))
+        self.assertEqual(body["project"]["id"], "0-5")
+        self.assertEqual(body["summary"], "Schema")
+        self.assertEqual(body["description"], "body")
+
+    def test_existing_link_targets_filters_by_type(self):
+        links = [
+            {"linkType": {"name": "Subtask"}, "direction": "INWARD",
+             "issues": [{"idReadable": "SAS-200"}]},
+            {"linkType": {"name": "Depend"}, "direction": "OUTWARD",
+             "issues": [{"idReadable": "SAS-202"}]},
+        ]
+        tr = FakeTransport([(200, links)])
+        c = cy.YouTrackClient("https://yt.example.com", "tok", transport=tr)
+        self.assertEqual(c.existing_link_targets("SAS-201", "Subtask"), {"SAS-200"})
+
+    def test_add_link_command_posts_query(self):
+        tr = FakeTransport([(200, {})])
+        c = cy.YouTrackClient("https://yt.example.com", "tok", transport=tr)
+        c.add_link_command("SAS-201", "subtask of SAS-200")
+        call = tr.calls[0]
+        self.assertEqual(call["method"], "POST")
+        self.assertIn("/api/commands", call["url"])
+        body = json.loads(call["data"].decode("utf-8"))
+        self.assertEqual(body["query"], "subtask of SAS-200")
+        self.assertEqual(body["issues"][0]["idReadable"], "SAS-201")
+
+    def test_http_error_raises(self):
+        tr = FakeTransport([(404, {"error": "Not Found"})])
+        c = cy.YouTrackClient("https://yt.example.com", "tok", transport=tr)
+        with self.assertRaises(RuntimeError):
+            c.resolve_project_id("SAS-999")
 
 
 if __name__ == "__main__":
