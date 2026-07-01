@@ -194,5 +194,85 @@ class TestYouTrackClient(unittest.TestCase):
             c.resolve_project_id("SAS-999")
 
 
+class FakeClient:
+    def __init__(self):
+        self.created = []       # (project_id, summary, description)
+        self.links = []         # (source_id, query)
+        self.existing = {}      # (issue_id, link_type) -> set
+        self._counter = 200
+
+    def resolve_project_id(self, issue_id):
+        return "0-5"
+
+    def create_issue(self, project_id, summary, description):
+        self._counter += 1
+        issue_id = f"SAS-{self._counter}"
+        self.created.append((project_id, summary, description))
+        return issue_id
+
+    def existing_link_targets(self, issue_id, link_type_name):
+        return self.existing.get((issue_id, link_type_name), set())
+
+    def add_link_command(self, source_id, query):
+        self.links.append((source_id, query))
+
+
+class TestRun(unittest.TestCase):
+    def _write_plan(self, d, plan):
+        p = os.path.join(d, "create-plan.json")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(json.dumps(plan))
+        return p
+
+    def test_dry_run_makes_no_writes(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            fc = FakeClient()
+            out = cy.run(p, dry_run=True, client=fc)
+            self.assertIn("dry-run", out.lower())
+            self.assertEqual(fc.created, [])
+            self.assertEqual(fc.links, [])
+
+    def test_full_run_creates_and_links(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            fc = FakeClient()
+            out = cy.run(p, dry_run=False, client=fc)
+            # two issues created
+            self.assertEqual(len(fc.created), 2)
+            # mapping persisted
+            mapping = cy.load_mapping(os.path.join(d, ".created.json"))
+            self.assertEqual(set(mapping.keys()), {"01-schema", "02-model"})
+            # subtask links for both children + one dependency link
+            queries = [q for _, q in fc.links]
+            self.assertTrue(any(q == "subtask of SAS-200" for q in queries))
+            self.assertTrue(any(q.startswith("depends on") for q in queries))
+            self.assertIn("Задачи созданы", out)
+
+    def test_resume_skips_already_created(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            cy.save_mapping(os.path.join(d, ".created.json"), {"01-schema": "SAS-201"})
+            fc = FakeClient()
+            cy.run(p, dry_run=False, client=fc)
+            # only the not-yet-created task is created
+            self.assertEqual(len(fc.created), 1)
+            self.assertEqual(fc.created[0][1], "Model")
+
+    def test_idempotent_links_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            fc = FakeClient()
+            # pretend 01-schema already a subtask of SAS-200
+            def existing(issue_id, link_type):
+                if link_type == cy.LINK_TYPE_SUBTASK:
+                    return {"SAS-200"}
+                return set()
+            fc.existing_link_targets = existing
+            cy.run(p, dry_run=False, client=fc)
+            # no "subtask of" command should be issued since both children already linked
+            self.assertFalse(any(q == "subtask of SAS-200" for _, q in fc.links))
+
+
 if __name__ == "__main__":
     unittest.main()

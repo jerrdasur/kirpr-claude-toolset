@@ -7,6 +7,7 @@ Requires YOUTRACK_URL and YOUTRACK_TOKEN environment variables.
 """
 
 import json
+import os
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -219,3 +220,57 @@ class YouTrackClient:
     def add_link_command(self, source_id: str, query: str) -> None:
         body = {"query": query, "issues": [{"idReadable": source_id}]}
         self._request("POST", "/api/commands", body)
+
+
+def _mapping_path_for(plan_path: str) -> str:
+    return os.path.join(os.path.dirname(os.path.abspath(plan_path)), ".created.json")
+
+
+def run(plan_path: str, dry_run: bool, client=None, mapping_path=None) -> str:
+    plan = load_plan(plan_path)
+    validate_plan(plan)
+    if mapping_path is None:
+        mapping_path = _mapping_path_for(plan_path)
+    mapping = load_mapping(mapping_path)
+
+    if dry_run:
+        return render_dry_run(plan, mapping)
+
+    if client is None:
+        base_url = os.environ.get("YOUTRACK_URL")
+        token = os.environ.get("YOUTRACK_TOKEN")
+        if not base_url or not token:
+            raise RuntimeError("YOUTRACK_URL and YOUTRACK_TOKEN must be set.")
+        client = YouTrackClient(base_url.rstrip("/"), token)
+
+    parent = plan["parent"]
+    project_id = client.resolve_project_id(parent)
+
+    # Pass 1: create issues (skip already-created), persist mapping incrementally.
+    for t in plan["tasks"]:
+        if t["key"] in mapping:
+            continue
+        issue_id = client.create_issue(project_id, t["summary"], t["description"])
+        mapping[t["key"]] = issue_id
+        save_mapping(mapping_path, mapping)
+
+    created_links = []
+
+    # Pass 2a: hierarchy (each child subtask of parent).
+    for t in plan["tasks"]:
+        child_id = mapping[t["key"]]
+        if parent in client.existing_link_targets(child_id, LINK_TYPE_SUBTASK):
+            continue
+        client.add_link_command(child_id, f"subtask of {parent}")
+        created_links.append(f"{child_id} subtask of {parent}")
+
+    # Pass 2b: dependencies (edge from -> to means `to depends on from`).
+    for e in plan.get("edges") or []:
+        from_id = mapping[e["from"]]
+        to_id = mapping[e["to"]]
+        if from_id in client.existing_link_targets(to_id, LINK_TYPE_DEPEND):
+            continue
+        client.add_link_command(to_id, f"depends on {from_id}")
+        created_links.append(f"{to_id} depends on {from_id}")
+
+    return render_report(plan, mapping, created_links)
