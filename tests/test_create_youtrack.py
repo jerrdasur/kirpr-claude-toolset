@@ -119,5 +119,16 @@ class TestRenderReport(unittest.TestCase):
         self.assertIn("subtask of SAS-200", out)
 
 
+class TestMappingIO(unittest.TestCase):
+    def test_missing_file_returns_empty(self):
+        self.assertEqual(cy.load_mapping("/nonexistent/path/.created.json"), {})
+
+    def test_round_trip(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, ".created.json")
+            cy.save_mapping(p, {"01-schema": "SAS-201"})
+            self.assertEqual(cy.load_mapping(p), {"01-schema": "SAS-201"})
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -133,3 +133,18 @@ def render_report(plan: dict, mapping: dict, created_links: list) -> str:
     lines.append("")
     lines.append(f"**Итого:** {len(mapping)} задач, {len(created_links)} новых связей.")
     return "\n".join(lines)
+
+
+def load_mapping(path: str) -> dict:
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.loads(f.read())
+    except FileNotFoundError:
+        return {}
+    except json.JSONDecodeError:
+        return {}
+
+
+def save_mapping(path: str, mapping: dict) -> None:
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(json.dumps(mapping, ensure_ascii=False, indent=2))
