@@ -448,7 +448,7 @@ git commit -m "feat(expert-panel): персоны ядра — Pike, Cheney, For
 
 Попроси пользователя ответить одной строкой в формате:
 
-    accept 1,3,5; reject 2 — причина; ? 4
+    accept C2,S1; reject F3 — причина; ? P4
 
 - `accept` — правка будет применена.
 - `reject` — причина обязательна, она попадёт в Review log.
@@ -581,7 +581,7 @@ git commit -m "feat(expert-panel): режим ревью спеки"
 
 Тот же формат, что в режиме спеки:
 
-    accept 1,3,5; reject 2 — причина; ? 4
+    accept C2,S1; reject F3 — причина; ? P4
 
 ## Фаза 5. Правки
 
