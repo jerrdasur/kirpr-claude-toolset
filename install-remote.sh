@@ -8,6 +8,8 @@ BASE_URL="https://raw.githubusercontent.com/$REPO/$BRANCH"
 CLAUDE_DIR="$HOME/.claude"
 COMMANDS_DIR="$CLAUDE_DIR/commands/kirpr"
 KIRPR_DIR="$CLAUDE_DIR/kirpr"
+SKILLS_DIR="$CLAUDE_DIR/skills"
+PANEL_DIR="$SKILLS_DIR/expert-panel"
 
 echo "Installing kirpr from github.com/$REPO"
 
@@ -19,6 +21,14 @@ if [ -f "$KIRPR_DIR/config/tracker.md" ]; then
     echo "  Backed up tracker.md"
 fi
 
+# --- Backup custom-experts.md if it exists ---
+CUSTOM_BACKUP=""
+if [ -f "$PANEL_DIR/custom-experts.md" ]; then
+    CUSTOM_BACKUP="$(mktemp)"
+    cp "$PANEL_DIR/custom-experts.md" "$CUSTOM_BACKUP"
+    echo "  Backed up custom-experts.md"
+fi
+
 # --- Clean old installation ---
 if [ -d "$COMMANDS_DIR" ]; then
     rm -rf "$COMMANDS_DIR"
@@ -28,11 +38,18 @@ if [ -d "$KIRPR_DIR" ]; then
     rm -rf "$KIRPR_DIR"
     echo "  Removed old $KIRPR_DIR"
 fi
+if [ -d "$PANEL_DIR" ]; then
+    rm -rf "$PANEL_DIR"
+    echo "  Removed old $PANEL_DIR"
+fi
 
 # --- Create directories ---
 mkdir -p "$COMMANDS_DIR"
 mkdir -p "$KIRPR_DIR/config"
 mkdir -p "$KIRPR_DIR/scripts"
+mkdir -p "$KIRPR_DIR/prompts"
+mkdir -p "$PANEL_DIR/experts"
+mkdir -p "$PANEL_DIR/modes"
 
 # --- Download files ---
 download() {
@@ -53,6 +70,8 @@ download "commands/kirpr/task-fetch.md"        "$COMMANDS_DIR/task-fetch.md"
 download "commands/kirpr/tasks-adapt.md"       "$COMMANDS_DIR/tasks-adapt.md"
 download "commands/kirpr/tasks-decompose.md"   "$COMMANDS_DIR/tasks-decompose.md"
 download "commands/kirpr/tasks-review.md"      "$COMMANDS_DIR/tasks-review.md"
+download "commands/kirpr/tasks-push.md"        "$COMMANDS_DIR/tasks-push.md"
+download "commands/kirpr/text.md"              "$COMMANDS_DIR/text.md"
 
 # Config
 download "kirpr/config/adr-review-rubric.md"   "$KIRPR_DIR/config/adr-review-rubric.md"
@@ -62,10 +81,32 @@ download "kirpr/config/style-examples.md"      "$KIRPR_DIR/config/style-examples
 download "kirpr/config/templates.md"           "$KIRPR_DIR/config/templates.md"
 download "kirpr/config/workflow.md"            "$KIRPR_DIR/config/workflow.md"
 
+# Prompts
+download "kirpr/prompts/text.md"               "$KIRPR_DIR/prompts/text.md"
+
 # Scripts
 download "kirpr/scripts/fetch_jira.py"         "$KIRPR_DIR/scripts/fetch_jira.py"
 download "kirpr/scripts/fetch_youtrack.py"     "$KIRPR_DIR/scripts/fetch_youtrack.py"
 download "kirpr/scripts/validate_services.py"  "$KIRPR_DIR/scripts/validate_services.py"
+download "kirpr/scripts/create_youtrack.py"    "$KIRPR_DIR/scripts/create_youtrack.py"
+
+# Skill: expert-panel
+download "skills/expert-panel/SKILL.md"                  "$PANEL_DIR/SKILL.md"
+download "skills/expert-panel/experts/pike.md"           "$PANEL_DIR/experts/pike.md"
+download "skills/expert-panel/experts/cheney.md"         "$PANEL_DIR/experts/cheney.md"
+download "skills/expert-panel/experts/ford.md"           "$PANEL_DIR/experts/ford.md"
+download "skills/expert-panel/experts/stonebraker.md"    "$PANEL_DIR/experts/stonebraker.md"
+download "skills/expert-panel/modes/spec.md"             "$PANEL_DIR/modes/spec.md"
+download "skills/expert-panel/modes/diff.md"             "$PANEL_DIR/modes/diff.md"
+
+# --- Restore or seed custom-experts.md ---
+if [ -n "$CUSTOM_BACKUP" ] && [ -f "$CUSTOM_BACKUP" ]; then
+    cp "$CUSTOM_BACKUP" "$PANEL_DIR/custom-experts.md"
+    rm "$CUSTOM_BACKUP"
+    echo "  Restored custom-experts.md"
+else
+    download "skills/expert-panel/custom-experts.md"      "$PANEL_DIR/custom-experts.md"
+fi
 
 # --- Restore or configure tracker ---
 if [ -n "$TRACKER_BACKUP" ] && [ -f "$TRACKER_BACKUP" ]; then
@@ -165,4 +206,4 @@ TRACKER_EOF
 fi
 
 echo ""
-echo "Done! kirpr commands are now available in Claude Code as /kirpr:*"
+echo "Done! kirpr commands are available as /kirpr:*, expert-panel skill as /expert-panel"
