@@ -26,7 +26,7 @@ CUSTOM_BACKUP=""
 if [ -f "$PANEL_DIR/custom-experts.md" ]; then
     CUSTOM_BACKUP="$(mktemp)"
     cp "$PANEL_DIR/custom-experts.md" "$CUSTOM_BACKUP"
-    echo "  Backed up custom-experts.md"
+    echo "  Backed up custom-experts.md -> $CUSTOM_BACKUP"
 fi
 
 # --- Clean old installation ---
