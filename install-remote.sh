@@ -67,6 +67,9 @@ download "commands/kirpr/adr-init.md"         "$COMMANDS_DIR/adr-init.md"
 download "commands/kirpr/adr-review.md"        "$COMMANDS_DIR/adr-review.md"
 download "commands/kirpr/adr-write.md"         "$COMMANDS_DIR/adr-write.md"
 download "commands/kirpr/task-fetch.md"        "$COMMANDS_DIR/task-fetch.md"
+download "commands/kirpr/task-create.md"       "$COMMANDS_DIR/task-create.md"
+download "commands/kirpr/task-update.md"       "$COMMANDS_DIR/task-update.md"
+download "commands/kirpr/task-delete.md"       "$COMMANDS_DIR/task-delete.md"
 download "commands/kirpr/tasks-adapt.md"       "$COMMANDS_DIR/tasks-adapt.md"
 download "commands/kirpr/tasks-decompose.md"   "$COMMANDS_DIR/tasks-decompose.md"
 download "commands/kirpr/tasks-review.md"      "$COMMANDS_DIR/tasks-review.md"
@@ -89,6 +92,8 @@ download "kirpr/scripts/fetch_jira.py"         "$KIRPR_DIR/scripts/fetch_jira.py
 download "kirpr/scripts/fetch_youtrack.py"     "$KIRPR_DIR/scripts/fetch_youtrack.py"
 download "kirpr/scripts/validate_services.py"  "$KIRPR_DIR/scripts/validate_services.py"
 download "kirpr/scripts/create_youtrack.py"    "$KIRPR_DIR/scripts/create_youtrack.py"
+download "kirpr/scripts/manage_youtrack.py"    "$KIRPR_DIR/scripts/manage_youtrack.py"
+download "kirpr/scripts/manage_jira.py"        "$KIRPR_DIR/scripts/manage_jira.py"
 
 # Skill: expert-panel
 download "skills/expert-panel/SKILL.md"                  "$PANEL_DIR/SKILL.md"
