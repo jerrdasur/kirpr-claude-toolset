@@ -7,6 +7,7 @@ COMMANDS_DIR="$CLAUDE_DIR/commands/kirpr"
 KIRPR_DIR="$CLAUDE_DIR/kirpr"
 SKILLS_DIR="$CLAUDE_DIR/skills"
 PANEL_DIR="$SKILLS_DIR/expert-panel"
+GRILL_DIR="$SKILLS_DIR/grill-me"
 
 echo "Installing kirpr from $REPO_DIR"
 
@@ -39,6 +40,10 @@ if [ -d "$PANEL_DIR" ]; then
     rm -rf "$PANEL_DIR"
     echo "  Removed old $PANEL_DIR"
 fi
+if [ -d "$GRILL_DIR" ]; then
+    rm -rf "$GRILL_DIR"
+    echo "  Removed old $GRILL_DIR"
+fi
 
 # --- Create directories ---
 mkdir -p "$COMMANDS_DIR"
@@ -46,6 +51,7 @@ mkdir -p "$KIRPR_DIR/config"
 mkdir -p "$KIRPR_DIR/scripts"
 mkdir -p "$PANEL_DIR/experts"
 mkdir -p "$PANEL_DIR/modes"
+mkdir -p "$GRILL_DIR/phases"
 
 # --- Copy commands ---
 for f in "$REPO_DIR"/commands/kirpr/*.md; do
@@ -92,6 +98,15 @@ for f in "$REPO_DIR"/skills/expert-panel/modes/*.md; do
     name="$(basename "$f")"
     cp "$f" "$PANEL_DIR/modes/$name"
     echo "  skills/expert-panel/modes/$name -> copied"
+done
+
+# --- Copy grill-me skill ---
+cp "$REPO_DIR/skills/grill-me/SKILL.md" "$GRILL_DIR/SKILL.md"
+echo "  skills/grill-me/SKILL.md -> copied"
+for f in "$REPO_DIR"/skills/grill-me/phases/*.md; do
+    name="$(basename "$f")"
+    cp "$f" "$GRILL_DIR/phases/$name"
+    echo "  skills/grill-me/phases/$name -> copied"
 done
 
 # --- Restore or seed custom-experts.md ---
@@ -203,4 +218,4 @@ TRACKER_EOF
 fi
 
 echo ""
-echo "Done! kirpr commands are available as /kirpr:*, expert-panel skill as /expert-panel"
+echo "Done! kirpr commands are available as /kirpr:*, skills as /expert-panel and /grill-me"

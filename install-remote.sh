@@ -10,6 +10,7 @@ COMMANDS_DIR="$CLAUDE_DIR/commands/kirpr"
 KIRPR_DIR="$CLAUDE_DIR/kirpr"
 SKILLS_DIR="$CLAUDE_DIR/skills"
 PANEL_DIR="$SKILLS_DIR/expert-panel"
+GRILL_DIR="$SKILLS_DIR/grill-me"
 
 echo "Installing kirpr from github.com/$REPO"
 
@@ -42,6 +43,10 @@ if [ -d "$PANEL_DIR" ]; then
     rm -rf "$PANEL_DIR"
     echo "  Removed old $PANEL_DIR"
 fi
+if [ -d "$GRILL_DIR" ]; then
+    rm -rf "$GRILL_DIR"
+    echo "  Removed old $GRILL_DIR"
+fi
 
 # --- Create directories ---
 mkdir -p "$COMMANDS_DIR"
@@ -50,6 +55,7 @@ mkdir -p "$KIRPR_DIR/scripts"
 mkdir -p "$KIRPR_DIR/prompts"
 mkdir -p "$PANEL_DIR/experts"
 mkdir -p "$PANEL_DIR/modes"
+mkdir -p "$GRILL_DIR/phases"
 
 # --- Download files ---
 download() {
@@ -103,6 +109,11 @@ download "skills/expert-panel/experts/ford.md"           "$PANEL_DIR/experts/for
 download "skills/expert-panel/experts/stonebraker.md"    "$PANEL_DIR/experts/stonebraker.md"
 download "skills/expert-panel/modes/spec.md"             "$PANEL_DIR/modes/spec.md"
 download "skills/expert-panel/modes/diff.md"             "$PANEL_DIR/modes/diff.md"
+
+# Skill: grill-me
+download "skills/grill-me/SKILL.md"                     "$GRILL_DIR/SKILL.md"
+download "skills/grill-me/phases/lenses.md"             "$GRILL_DIR/phases/lenses.md"
+download "skills/grill-me/phases/wrapup.md"             "$GRILL_DIR/phases/wrapup.md"
 
 # --- Restore or seed custom-experts.md ---
 if [ -n "$CUSTOM_BACKUP" ] && [ -f "$CUSTOM_BACKUP" ]; then
@@ -211,4 +222,4 @@ TRACKER_EOF
 fi
 
 echo ""
-echo "Done! kirpr commands are available as /kirpr:*, expert-panel skill as /expert-panel"
+echo "Done! kirpr commands are available as /kirpr:*, skills as /expert-panel and /grill-me"

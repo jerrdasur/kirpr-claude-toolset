@@ -6,6 +6,7 @@ COMMANDS_DIR="$CLAUDE_DIR/commands/kirpr"
 KIRPR_DIR="$CLAUDE_DIR/kirpr"
 SKILLS_DIR="$CLAUDE_DIR/skills"
 PANEL_DIR="$SKILLS_DIR/expert-panel"
+GRILL_DIR="$SKILLS_DIR/grill-me"
 
 echo "Uninstalling kirpr..."
 
@@ -47,6 +48,10 @@ fi
 if [ -d "$PANEL_DIR" ]; then
     rm -rf "$PANEL_DIR"
     echo "  Removed $PANEL_DIR"
+fi
+if [ -d "$GRILL_DIR" ]; then
+    rm -rf "$GRILL_DIR"
+    echo "  Removed $GRILL_DIR"
 fi
 
 # --- Clean up empty parent directories ---
