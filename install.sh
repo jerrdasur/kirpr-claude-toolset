@@ -8,6 +8,7 @@ KIRPR_DIR="$CLAUDE_DIR/kirpr"
 SKILLS_DIR="$CLAUDE_DIR/skills"
 PANEL_DIR="$SKILLS_DIR/expert-panel"
 GRILL_DIR="$SKILLS_DIR/grill-me"
+FLOW_DIR="$SKILLS_DIR/kirpr-flow"
 
 echo "Installing kirpr from $REPO_DIR"
 
@@ -44,6 +45,10 @@ if [ -d "$GRILL_DIR" ]; then
     rm -rf "$GRILL_DIR"
     echo "  Removed old $GRILL_DIR"
 fi
+if [ -d "$FLOW_DIR" ]; then
+    rm -rf "$FLOW_DIR"
+    echo "  Removed old $FLOW_DIR"
+fi
 
 # --- Create directories ---
 mkdir -p "$COMMANDS_DIR"
@@ -52,6 +57,9 @@ mkdir -p "$KIRPR_DIR/scripts"
 mkdir -p "$PANEL_DIR/experts"
 mkdir -p "$PANEL_DIR/modes"
 mkdir -p "$GRILL_DIR/phases"
+mkdir -p "$FLOW_DIR/core"
+mkdir -p "$FLOW_DIR/modes"
+mkdir -p "$FLOW_DIR/prompts"
 
 # --- Copy commands ---
 for f in "$REPO_DIR"/commands/kirpr/*.md; do
@@ -109,6 +117,17 @@ for f in "$REPO_DIR"/skills/grill-me/phases/*.md; do
     echo "  skills/grill-me/phases/$name -> copied"
 done
 
+# --- Copy kirpr-flow skill ---
+cp "$REPO_DIR/skills/kirpr-flow/SKILL.md" "$FLOW_DIR/SKILL.md"
+echo "  skills/kirpr-flow/SKILL.md -> copied"
+for d in core modes prompts; do
+    for f in "$REPO_DIR"/skills/kirpr-flow/$d/*.md; do
+        name="$(basename "$f")"
+        cp "$f" "$FLOW_DIR/$d/$name"
+        echo "  skills/kirpr-flow/$d/$name -> copied"
+    done
+done
+
 # --- Restore or seed custom-experts.md ---
 if [ -n "$CUSTOM_BACKUP" ] && [ -f "$CUSTOM_BACKUP" ]; then
     cp "$CUSTOM_BACKUP" "$PANEL_DIR/custom-experts.md"
@@ -132,7 +151,7 @@ elif [ ! -f "$KIRPR_DIR/config/tracker.md" ]; then
     echo "  2) Jira"
     echo "  3) None (skip)"
     printf "Choice [1-3]: "
-    read -r tracker_choice
+    read -r tracker_choice || true
 
     case "$tracker_choice" in
         1)
@@ -218,4 +237,4 @@ TRACKER_EOF
 fi
 
 echo ""
-echo "Done! kirpr commands are available as /kirpr:*, skills as /expert-panel and /grill-me"
+echo "Done! kirpr commands are available as /kirpr:*, skills as /expert-panel, /grill-me and /kirpr-flow"

@@ -7,6 +7,7 @@ KIRPR_DIR="$CLAUDE_DIR/kirpr"
 SKILLS_DIR="$CLAUDE_DIR/skills"
 PANEL_DIR="$SKILLS_DIR/expert-panel"
 GRILL_DIR="$SKILLS_DIR/grill-me"
+FLOW_DIR="$SKILLS_DIR/kirpr-flow"
 
 echo "Uninstalling kirpr..."
 
@@ -15,7 +16,7 @@ if [ -f "$KIRPR_DIR/config/tracker.md" ]; then
     echo ""
     echo "tracker.md contains your tracker configuration."
     printf "Delete it too? [y/N]: "
-    read -r delete_tracker
+    read -r delete_tracker || true
     if [ "$delete_tracker" != "y" ] && [ "$delete_tracker" != "Y" ]; then
         TRACKER_SAVE="$(mktemp)"
         cp "$KIRPR_DIR/config/tracker.md" "$TRACKER_SAVE"
@@ -28,7 +29,7 @@ if [ -f "$PANEL_DIR/custom-experts.md" ]; then
     echo ""
     echo "custom-experts.md contains your custom expert panel."
     printf "Delete it too? [y/N]: "
-    read -r delete_custom
+    read -r delete_custom || true
     if [ "$delete_custom" != "y" ] && [ "$delete_custom" != "Y" ]; then
         CUSTOM_SAVE="$(mktemp)"
         cp "$PANEL_DIR/custom-experts.md" "$CUSTOM_SAVE"
@@ -52,6 +53,10 @@ fi
 if [ -d "$GRILL_DIR" ]; then
     rm -rf "$GRILL_DIR"
     echo "  Removed $GRILL_DIR"
+fi
+if [ -d "$FLOW_DIR" ]; then
+    rm -rf "$FLOW_DIR"
+    echo "  Removed $FLOW_DIR"
 fi
 
 # --- Clean up empty parent directories ---
