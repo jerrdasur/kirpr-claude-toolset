@@ -1,0 +1,5 @@
+display_name: Kirpr Flow
+short_description: Git-free development workflow
+default_prompt: "Use $kirpr-flow with the mode and arguments I provide."
+policy:
+  allow_implicit_invocation: false

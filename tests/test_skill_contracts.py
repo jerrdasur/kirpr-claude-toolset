@@ -37,6 +37,27 @@ def assert_claude_adapter(testcase, command, skill):
     testcase.assertLessEqual(len(text.splitlines()), 12)
 
 
+class TestGlobalSkillContracts(unittest.TestCase):
+    FORBIDDEN = ("~/.claude/kirpr", ".Codex", "AskUserQuestion", "TodoWrite")
+
+    def test_all_skills_are_explicit(self):
+        for skill in ALL_SKILLS:
+            with self.subTest(skill=skill):
+                assert_explicit_skill(self, skill)
+
+    def test_canonical_skills_have_no_platform_runtime_paths(self):
+        for skill in ALL_SKILLS:
+            for path in (ROOT / "skills" / skill).rglob("*.md"):
+                text = path.read_text(encoding="utf-8")
+                for forbidden in self.FORBIDDEN:
+                    with self.subTest(skill=skill, path=path, forbidden=forbidden):
+                        self.assertNotIn(forbidden, text)
+
+    def test_exact_skill_set(self):
+        actual = {p.name for p in (ROOT / "skills").iterdir() if (p / "SKILL.md").is_file()}
+        self.assertEqual(actual, set(ALL_SKILLS))
+
+
 class TestTrackerCrudSkills(unittest.TestCase):
     CASES = (
         ("task-fetch", "kirpr-task-fetch"),
