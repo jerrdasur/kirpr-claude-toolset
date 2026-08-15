@@ -1,79 +1,89 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CLAUDE_DIR="$HOME/.claude"
-COMMANDS_DIR="$CLAUDE_DIR/commands/kirpr"
-KIRPR_DIR="$CLAUDE_DIR/kirpr"
-SKILLS_DIR="$CLAUDE_DIR/skills"
-PANEL_DIR="$SKILLS_DIR/expert-panel"
-GRILL_DIR="$SKILLS_DIR/grill-me"
-FLOW_DIR="$SKILLS_DIR/kirpr-flow"
+REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=installer/lib.sh
+. "$REPO_DIR/installer/lib.sh"
 
-echo "Uninstalling kirpr..."
+manifest_has_backup() {
+    local selected
 
-# --- Handle tracker.md ---
-if [ -f "$KIRPR_DIR/config/tracker.md" ]; then
-    echo ""
-    echo "tracker.md contains your tracker configuration."
-    printf "Delete it too? [y/N]: "
-    read -r delete_tracker || true
-    if [ "$delete_tracker" != "y" ] && [ "$delete_tracker" != "Y" ]; then
-        TRACKER_SAVE="$(mktemp)"
-        cp "$KIRPR_DIR/config/tracker.md" "$TRACKER_SAVE"
-        echo "  Saved tracker.md to $TRACKER_SAVE"
+    selected="$1"
+    [ -f "$KIRPR_MANIFEST" ] || return 1
+    awk -F '\t' -v selected="$selected" '$1 == "backup" && $2 == selected { found = 1 } END { exit !found }' "$KIRPR_MANIFEST"
+}
+
+manifest_has_target() {
+    local selected
+
+    selected="$1"
+    [ -f "$KIRPR_MANIFEST" ] || return 1
+    awk -F '\t' -v selected="$selected" '$1 == "target" && $2 == selected { found = 1 } END { exit !found }' "$KIRPR_MANIFEST"
+}
+
+rewrite_manifest_after_uninstall() {
+    local remove_target manifest_tmp kind target path backup remaining
+
+    remove_target="$1"
+    manifest_tmp="$(mktemp "$KIRPR_CONFIG_DIR/.install-manifest.XXXXXX")"
+    remaining=0
+    if [ "$remove_target" != codex ] && manifest_has_target codex; then remaining=1; fi
+    if [ "$remove_target" != claude ] && manifest_has_target claude; then remaining=1; fi
+    {
+        printf 'version\t1\n'
+        while IFS=$'\t' read -r kind target path backup; do
+            [ "$kind" = version ] && continue
+            [ "$target" = "$remove_target" ] && continue
+            if [ "$kind" = path ] && [ "$target" = shared ] && [ "$remaining" -eq 0 ]; then
+                continue
+            fi
+            if [ "$kind" = backup ]; then
+                printf 'backup\t%s\t%s\t%s\n' "$target" "$path" "$backup"
+            elif [ "$kind" = path ]; then
+                printf 'path\t%s\t%s\n' "$target" "$path"
+            elif [ "$kind" = target ]; then
+                printf 'target\t%s\n' "$target"
+            fi
+        done < "$KIRPR_MANIFEST"
+    } > "$manifest_tmp"
+    mv "$manifest_tmp" "$KIRPR_MANIFEST"
+}
+
+remove_runtime_if_unused() {
+    if ! manifest_has_target codex && ! manifest_has_target claude; then
+        if [ -e "$KIRPR_RUNTIME_DIR" ] || [ -L "$KIRPR_RUNTIME_DIR" ]; then
+            rm -rf "$KIRPR_RUNTIME_DIR"
+            printf 'Removed %s\n' "$KIRPR_RUNTIME_DIR"
+        fi
     fi
-fi
+}
 
-# --- Handle custom-experts.md ---
-if [ -f "$PANEL_DIR/custom-experts.md" ]; then
-    echo ""
-    echo "custom-experts.md contains your custom expert panel."
-    printf "Delete it too? [y/N]: "
-    read -r delete_custom || true
-    if [ "$delete_custom" != "y" ] && [ "$delete_custom" != "Y" ]; then
-        CUSTOM_SAVE="$(mktemp)"
-        cp "$PANEL_DIR/custom-experts.md" "$CUSTOM_SAVE"
-        echo "  Saved custom-experts.md to $CUSTOM_SAVE"
+uninstall_one_target() {
+    local selected restore
+
+    selected="$1"
+    manifest_has_target "$selected" || return 0
+    restore=n
+    if manifest_has_backup "$selected"; then
+        printf 'Restore displaced content for %s? [y/N]: ' "$selected"
+        if kirpr_read_input; then restore="$KIRPR_INPUT_VALUE"; fi
     fi
-fi
+    uninstall_target "$selected"
+    if [ "$restore" = y ] || [ "$restore" = Y ]; then restore_displaced "$selected"; fi
+    rewrite_manifest_after_uninstall "$selected"
+    remove_runtime_if_unused
+}
 
-# --- Remove directories ---
-if [ -d "$COMMANDS_DIR" ]; then
-    rm -rf "$COMMANDS_DIR"
-    echo "  Removed $COMMANDS_DIR"
-fi
-if [ -d "$KIRPR_DIR" ]; then
-    rm -rf "$KIRPR_DIR"
-    echo "  Removed $KIRPR_DIR"
-fi
-if [ -d "$PANEL_DIR" ]; then
-    rm -rf "$PANEL_DIR"
-    echo "  Removed $PANEL_DIR"
-fi
-if [ -d "$GRILL_DIR" ]; then
-    rm -rf "$GRILL_DIR"
-    echo "  Removed $GRILL_DIR"
-fi
-if [ -d "$FLOW_DIR" ]; then
-    rm -rf "$FLOW_DIR"
-    echo "  Removed $FLOW_DIR"
-fi
+main() {
+    parse_args "$@"
+    [ -n "$KIRPR_TARGET" ] || choose_target
+    resolve_paths
+    [ -f "$KIRPR_MANIFEST" ] || { printf '%s\n' 'No kirpr installation manifest found.'; return 0; }
+    case "$KIRPR_TARGET" in
+        codex) uninstall_one_target codex ;;
+        claude) uninstall_one_target claude ;;
+        all) uninstall_one_target codex; uninstall_one_target claude ;;
+    esac
+}
 
-# --- Clean up empty parent directories ---
-rmdir "$CLAUDE_DIR/commands" 2>/dev/null && echo "  Removed empty: $CLAUDE_DIR/commands" || true
-rmdir "$SKILLS_DIR" 2>/dev/null && echo "  Removed empty: $SKILLS_DIR" || true
-
-echo ""
-echo "Done! kirpr has been uninstalled."
-
-if [ -n "${TRACKER_SAVE:-}" ] && [ -f "${TRACKER_SAVE:-}" ]; then
-    echo ""
-    echo "Your tracker.md was saved to: $TRACKER_SAVE"
-    echo "To restore it after reinstalling: cp $TRACKER_SAVE ~/.claude/kirpr/config/tracker.md"
-fi
-
-if [ -n "${CUSTOM_SAVE:-}" ] && [ -f "${CUSTOM_SAVE:-}" ]; then
-    echo ""
-    echo "Your custom-experts.md was saved to: $CUSTOM_SAVE"
-    echo "To restore it after reinstalling: cp $CUSTOM_SAVE ~/.claude/skills/expert-panel/custom-experts.md"
-fi
+main "$@"

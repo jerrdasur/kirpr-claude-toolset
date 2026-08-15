@@ -3,7 +3,6 @@
 ## Активный трекер
 
 Трекер: {{TRACKER_TYPE}}
-Скрипт: `python3 ~/.claude/kirpr/scripts/{{TRACKER_SCRIPT}} {ISSUE_ID}`
 URL: {{TRACKER_ISSUE_URL}}
 
 ## Переменные окружения
@@ -14,15 +13,11 @@ URL: {{TRACKER_ISSUE_URL}}
 
 ### YouTrack
 
-Скрипт: `python3 ~/.claude/kirpr/scripts/fetch_youtrack.py {ISSUE_ID}`
-
 Переменные окружения:
 - `YOUTRACK_URL` — базовый URL (например `https://youtrack.example.com`)
 - `YOUTRACK_TOKEN` — Bearer-токен для API YouTrack (обязателен)
 
 ### Jira
-
-Скрипт: `python3 ~/.claude/kirpr/scripts/fetch_jira.py {ISSUE_ID}`
 
 Переменные окружения:
 - `JIRA_URL` — базовый URL (например `https://yourcompany.atlassian.net`)

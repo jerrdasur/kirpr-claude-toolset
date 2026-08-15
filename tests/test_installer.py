@@ -116,5 +116,66 @@ class TestCleanInstall(InstallerCase):
         self.assertTrue(tracker.is_file())
         text = tracker.read_text(encoding="utf-8")
         self.assertTrue("Трекер: YouTrack" in text)
-        self.assertTrue("fetch_youtrack.py" in text)
-        self.assertFalse("fetch_tracker.py" in text)
+        self.assertNotIn("Скрипт:", text)
+        self.assertNotIn(".claude", text)
+
+
+class TestMigrationAndUninstall(InstallerCase):
+    def seed(self, relative, text):
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def test_migrates_and_normalizes_claude_tracker(self):
+        self.seed(
+            ".claude/kirpr/config/tracker.md",
+            "Трекер: Jira\nСкрипт: `python3 ~/.claude/kirpr/scripts/fetch_jira.py X`\n"
+            "URL: https://jira/browse/X\n",
+        )
+        self.run_script("install.sh", "--target", "codex")
+        text = (self.root / ".config/kirpr/tracker.md").read_text(encoding="utf-8")
+        self.assertIn("Трекер: Jira", text)
+        self.assertNotIn("Скрипт:", text)
+        self.assertNotIn(".claude", text)
+
+    def test_conflicting_custom_experts_stop_before_skill_replacement(self):
+        self.seed(".config/kirpr/custom-experts.md", "shared\n")
+        self.seed(".claude/skills/expert-panel/custom-experts.md", "claude\n")
+        marker = self.seed(".agents/skills/expert-panel/marker", "original\n")
+        result = self.run_script("install.sh", "--target", "codex", check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(marker.read_text(encoding="utf-8"), "original\n")
+
+    def test_backs_up_displaced_codex_skills_and_retired_adr(self):
+        self.seed(".agents/skills/kirpr-text/old", "text\n")
+        self.seed(".agents/skills/kirpr-adr/SKILL.md", "legacy adr\n")
+        self.run_script("install.sh", "--target", "codex")
+        backups = list((self.root / ".config/kirpr/backups").rglob("old"))
+        self.assertEqual(len(backups), 1)
+        self.assertFalse((self.root / ".agents/skills/kirpr-adr").exists())
+
+    def test_reinstall_preserves_user_files(self):
+        self.run_script("install.sh", "--target", "all")
+        custom = self.seed(".config/kirpr/custom-experts.md", "mine\n")
+        self.run_script("install.sh", "--target", "all")
+        self.assertEqual(custom.read_text(encoding="utf-8"), "mine\n")
+
+    def test_uninstall_codex_leaves_claude_runtime_and_config(self):
+        self.run_script("install.sh", "--target", "all")
+        self.run_script("uninstall.sh", "--target", "codex")
+        self.assertFalse((self.root / ".agents/skills/kirpr-text").exists())
+        self.assertTrue((self.root / ".claude/skills/kirpr-text").exists())
+        self.assertTrue((self.root / ".local/share/kirpr").exists())
+        self.assertTrue((self.root / ".config/kirpr").exists())
+
+    def test_failed_install_rolls_back_and_keeps_old_manifest(self):
+        marker = self.seed(".agents/skills/kirpr-text/marker", "original\n")
+        manifest = self.seed(".config/kirpr/install-manifest", "version\t1\n")
+        result = self.run_script(
+            "install.sh", "--target", "codex", check=False,
+            extra_env={"KIRPR_TEST_FAIL_AFTER_INSTALL": "1"},
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(marker.read_text(encoding="utf-8"), "original\n")
+        self.assertEqual(manifest.read_text(encoding="utf-8"), "version\t1\n")
