@@ -1,6 +1,7 @@
 # Выбор runtime трекера
 
-1. Прочитай `~/.config/kirpr/tracker.md`, секцию `## Активный трекер`.
+1. Прочитай `~/.config/kirpr/tracker.md`, секцию `## Активный трекер`; найди
+   `URL:` и запомни его как базовый URL для ссылок на задачи.
 2. `Трекер: YouTrack` использует:
    - fetch: `python3 ~/.local/share/kirpr/scripts/fetch_youtrack.py`
    - create/update/delete: `python3 ~/.local/share/kirpr/scripts/manage_youtrack.py`

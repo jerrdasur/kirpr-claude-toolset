@@ -46,3 +46,11 @@ class TestTrackerCrudSkills(unittest.TestCase):
         for command, skill in self.CASES:
             with self.subTest(command=command):
                 assert_claude_adapter(self, command, skill)
+
+    def test_create_skill_obtains_issue_link_base_url_from_runtime(self):
+        runtime = (ROOT / "kirpr" / "config" / "tracker-runtime.md").read_text(encoding="utf-8")
+        create_skill = (ROOT / "skills" / "kirpr-task-create" / "SKILL.md").read_text(encoding="utf-8")
+
+        self.assertIn("`URL:`", runtime)
+        self.assertIn("запомни его как базовый URL", runtime)
+        self.assertIn("базовый URL был определён при выполнении runtime-инструкции", create_skill)
