@@ -1,189 +1,183 @@
-# kirpr — slash-команды для Claude Code
+# kirpr — skills and commands for Claude Code and Codex
 
-Декомпозиция задач из трекера, Architecture Decision Records, редактура текстов, ревью панелью экспертов, прожарка продуктовых гипотез и рабочий цикл разработки без git — 12 команд и три скила для Claude Code.
+kirpr helps turn tracker tasks into plans, ADRs, edited text, expert reviews,
+product-hypothesis interviews, and a git-free development workflow. The same
+skills work in both Claude Code and Codex; Claude also has compatible
+`/kirpr:*` command adapters.
 
-## Команды
+## Invocations
 
-### Работа с задачами
+Use the Claude Code or Codex form in the relevant client.
 
-| Команда | Что делает |
-|---------|-----------|
-| `/kirpr:task-fetch SAS-200` | Загружает задачу из трекера: описание, комментарии, связи, историю |
-| `/kirpr:task-create SAS Починить экспорт` | Создаёт одну задачу: разбирает запрос → dry-run → подтверждение → создание. Поддерживает родителя, исполнителя, статус |
-| `/kirpr:task-update SAS-200 статус In Progress` | Меняет поля задачи: раскладывает запрос в флаги → показывает `было → станет` и diff описания → подтверждение → правка |
-| `/kirpr:task-delete SAS-200` | **Безвозвратно** удаляет задачу. Показывает, что исчезнет, и требует ввести номер задачи вручную — `да` не принимается |
+### Tracker tasks
 
-Работают с обоими трекерами: YouTrack через командный язык, Jira через
-типизированные поля и transitions. `task-delete` необратим — восстановления нет.
+| What | Claude Code | Codex |
+|------|-------------|-------|
+| Fetch a task | `/kirpr:task-fetch SAS-200` | `$kirpr-task-fetch SAS-200` |
+| Create a task | `/kirpr:task-create SAS Fix export` | `$kirpr-task-create SAS Fix export` |
+| Update a task | `/kirpr:task-update SAS-200 status In Progress` | `$kirpr-task-update SAS-200 status In Progress` |
+| Delete a task | `/kirpr:task-delete SAS-200` | `$kirpr-task-delete SAS-200` |
 
-### Декомпозиция задач
+`task-delete` is irreversible: it previews the result and requires manually
+entering the issue number.
 
-| Команда | Что делает |
-|---------|-----------|
-| `/kirpr:tasks-decompose SAS-200` | Разбивает задачу на подзадачи: загрузка данных → анализ с разработчиком → структура → верификация → md-файлы |
-| `/kirpr:tasks-review SAS-200` | Проверяет декомпозицию по 4 категориям (неоднозначности, противоречия, пропуски, риски), выставляет quality score и итеративно поднимает качество |
-| `/kirpr:tasks-adapt SAS-200` | Обновляет декомпозицию при изменении требований. Находит затронутые подзадачи, предлагает правки, остальное не трогает |
-| `/kirpr:tasks-push SAS-200` | Создаёт подзадачи из декомпозиции в YouTrack: строит план → dry-run preview → подтверждение → создание с иерархией и зависимостями. Идемпотентно (`.created.json`) |
+### Task decomposition
+
+| What | Claude Code | Codex |
+|------|-------------|-------|
+| Decompose | `/kirpr:tasks-decompose SAS-200` | `$kirpr-tasks-decompose SAS-200` |
+| Review decomposition | `/kirpr:tasks-review SAS-200` | `$kirpr-tasks-review SAS-200` |
+| Adapt decomposition | `/kirpr:tasks-adapt SAS-200` | `$kirpr-tasks-adapt SAS-200` |
+| Push subtasks | `/kirpr:tasks-push SAS-200` | `$kirpr-tasks-push SAS-200` |
 
 ### Architecture Decision Records
 
-| Команда | Что делает |
-|---------|-----------|
-| `/kirpr:adr-init` | Настраивает ADR-инфраструктуру в репозитории: services map, decision drivers, калибровочные примеры. Результат — в `CLAUDE.md` |
-| `/kirpr:adr-write SAS-200` | Пишет ADR: собирает контекст из трекера и кода, анализирует альтернативы, генерирует драфт, проводит self-review по рубрике K1–K6 |
-| `/kirpr:adr-review SAS-200` | Рецензирует ADR по 7 критериям (R1–R7) с кросс-сервисным анализом. Сверяет с кодовой базой и данными трекера, выдаёт светофорный отчёт |
+| What | Claude Code | Codex |
+|------|-------------|-------|
+| Initialize ADR support | `/kirpr:adr-init` | `$kirpr-adr-init` |
+| Write an ADR | `/kirpr:adr-write SAS-200` | `$kirpr-adr-write SAS-200` |
+| Review an ADR | `/kirpr:adr-review SAS-200` | `$kirpr-adr-review SAS-200` |
 
-### Редактура текста
+### Text editing
 
-| Команда | Что делает |
-|---------|-----------|
-| `/kirpr:text` | Пишет и редактирует тексты в информационном стиле (Ильяхов): ясность, факты, лаконичность |
+| What | Claude Code | Codex |
+|------|-------------|-------|
+| Edit a text | `/kirpr:text` | `$kirpr-text` |
 
-### Ревью панелью экспертов
+### Expert panel
 
-Скил `expert-panel` прогоняет артефакт через панель экспертов — по параллельному агенту на каждого, затем сводит замечания и ведёт разбор.
+| What | Claude Code | Codex |
+|------|-------------|-------|
+| Review a specification | `/expert-panel spec docs/spec.md` | `$expert-panel spec docs/spec.md` |
+| Review working tree | `/expert-panel diff` | `$expert-panel diff` |
+| Review against a base | `/expert-panel diff main` | `$expert-panel diff main` |
+| Review against a specification | `/expert-panel diff --spec docs/spec.md` | `$expert-panel diff --spec docs/spec.md` |
 
-| Вызов | Что делает |
-|-------|-----------|
-| `/expert-panel spec docs/superpowers/specs/2026-07-24-foo-design.md` | Критическое ревью спеки перед планированием: отчёт → ваш разбор `accept`/`reject` → правки в спеке → запись в `## Review log` |
-| `/expert-panel diff` | Ревью рабочего дерева против `HEAD` |
-| `/expert-panel diff main` | Ревью против ветки, с проверкой актуальности базы |
-| `/expert-panel diff --spec <путь>` | То же плюс сверка кода со спекой: что не реализовано, что сделано сверх, какие решения нарушены |
+The panel combines reviews from Rob Pike, Dave Cheney, Neal Ford, and Michael
+Stonebraker. Customize it in `~/.config/kirpr/custom-experts.md`.
 
-Ядро панели: Rob Pike (простота), Dave Cheney (границы и зависимости), Neal Ford (trade-offs и обратимость), Michael Stonebraker (данные и хранилище). Чеклисты заточены под Go.
+### Product-hypothesis interview
 
-Панель настраивается в `~/.claude/skills/expert-panel/custom-experts.md` — этот файл не перезаписывается при обновлении. Строка `disable: stonebraker` убирает ядерного эксперта, секция `## Имя — Домен` добавляет своего. Формат описан в самом файле.
+| What | Claude Code | Codex |
+|------|-------------|-------|
+| Choose an interview subject | `/grill-me` | `$grill-me` |
+| Start an interview | `/grill-me billing for small teams` | `$grill-me billing for small teams` |
+| Continue from a document | `/grill-me docs/hypotheses/billing.md` | `$grill-me docs/hypotheses/billing.md` |
+| Resume a saved session | `/grill-me docs/grill-me/2026-08-12-billing/` | `$grill-me docs/grill-me/2026-08-12-billing/` |
 
-Опционально: `.claude/expert-panel-ignore` в репозитории проекта задаёт glob-шаблоны файлов, которые панель не смотрит, — генерируемый код у каждой команды свой.
+### Development workflow
 
-### Прожарка продуктовых гипотез
+| What | Claude Code | Codex |
+|------|-------------|-------|
+| Brainstorm a spec | `/kirpr-flow brainstorm topic` | `$kirpr-flow brainstorm topic` |
+| Plan a spec | `/kirpr-flow plan docs/spec.md` | `$kirpr-flow plan docs/spec.md` |
+| Execute a plan | `/kirpr-flow execute docs/plan/` | `$kirpr-flow execute docs/plan/` |
+| Execute inline | `/kirpr-flow execute --inline docs/plan/` | `$kirpr-flow execute --inline docs/plan/` |
+| Request a review | `/kirpr-flow review docs/plan/` | `$kirpr-flow review docs/plan/` |
+| Debug a symptom | `/kirpr-flow debug symptom` | `$kirpr-flow debug symptom` |
+| Finish with a summary | `/kirpr-flow finish` | `$kirpr-flow finish` |
+| Create or edit a skill | `/kirpr-flow skill name` | `$kirpr-flow skill name` |
 
-Скил `grill-me` допрашивает продуктовую гипотезу, пока вы не скажете остановиться. Один открытый вопрос за раз, без подсказанных ответов.
+## Installation
 
-| Вызов | Что делает |
-|-------|-----------|
-| `/grill-me` | Спросит, что разбираем |
-| `/grill-me биллинг для команд от трёх человек` | Прожарка по свободной формулировке |
-| `/grill-me docs/hypotheses/billing.md` | Прожарка гипотезы из файла |
-| `/grill-me docs/grill-me/2026-08-12-billing/` | Продолжает прерванную сессию с той же точки |
-
-Скил ищет в предмете четыре вещи: нестыковки, неоднозначности, неизвестные и усложнения. Факты — цены конкурентов, бенчмарки, данные из репозитория — он добывает сам через субагентов и не тратит на них ваш ход. В документе найденный факт со ссылкой, ваш ответ и допущение остаются тремя разными основаниями.
-
-Останавливается **только** по прямой команде. Исчерпанные вопросы сессию не закрывают: скил переходит к следующей линзе, а когда линзы кончились — идёт вторым проходом и ищет противоречия между вашими же ответами.
-
-Линзы подбираются под проект и предмет, согласуются с вами перед стартом и сохраняются в `.claude/grill-me/lenses.md` в репозитории. Следующая сессия предложит готовый набор и дополнит его.
-
-По команде «стоп» вся собранная фактура собирается в документ и редактируется по промпту `/kirpr:text`. Сессия живёт в `docs/grill-me/<дата>-<тема>/`: журнал, состояние и итоговый документ.
-
-### Рабочий цикл без git
-
-Зонтичный скил `kirpr-flow` ведёт работу от идеи до сдачи: спека, план, исполнение субагентами, ревью, финальная сводка. Ни одной git-операции: коммиты, ветки и слияния остаются за пользователем.
-
-| Вызов | Что делает |
-|-------|-----------|
-| `/kirpr-flow brainstorm <тема>` | Доводит идею до спеки: вопросы, подходы, дизайн по секциям, документ в `docs/kirpr-flow/specs/` |
-| `/kirpr-flow plan <спека>` | Превращает спеку в план: каталог с файлом на задачу, у каждой — верификация последним шагом |
-| `/kirpr-flow execute <план>` | Исполняет план: свежий субагент на задачу, ревью после каждой, широкое ревью в конце |
-| `/kirpr-flow execute --inline <план>` | То же в текущей сессии, без субагентов |
-| `/kirpr-flow review <план или файлы>` | Заказывает ревью: субагент читает файлы целиком |
-| `/kirpr-flow debug <симптом>` | Разбирает баг: воспроизведение, поиск причины, тест до починки |
-| `/kirpr-flow finish` | Сводка работы: сделанное, принятые за вас решения, отложенное, несделанное |
-| `/kirpr-flow skill <имя>` | Пишет и правит скилы |
-
-Работа не считается сделанной без доказательства одного из четырёх форматов: код проверяется тестом, скрипт — запуском, БД — запросом, документ — чтением целиком. Доказательство — команда и её вывод, а не пересказ.
-
-Набор не коммитит, не ветвится и не сливает — и не советует, что коммитить. Ревью строится на чтении файлов целиком, а не на диффе; память между задачами — журнал `progress.md` рядом с планом. Готовность ветки и судьба изменений остаются на пользователе.
-
-Спеки в `docs/kirpr-flow/specs/`, планы каталогами в `docs/kirpr-flow/plans/`, там же журнал и отчёты исполнителей. Ничего не удаляется по завершении: без истории коммитов эти файлы и есть запись о работе.
-
-## Установка
-
-### Из интернета
+Clone the repository for a local installation:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jerrdasur/kirpr-claude-toolset/main/install-remote.sh | sh
-```
+git clone git@github.com:jerrdasur/kirpr-claude-toolset.git ~/kirpr-toolset
+cd ~/kirpr-toolset
 
-### Из локального клона
-
-```bash
-git clone git@github.com:jerrdasur/kirpr-claude-toolset.git ~/claude-toolset
-cd ~/claude-toolset
+# Interactive: choose Claude Code, Codex, or both.
 ./install.sh
+
+# Explicit local targets.
+./install.sh --target claude
+./install.sh --target codex
+./install.sh --target all
 ```
 
-Установщик копирует файлы в `~/.claude/commands/kirpr/`, `~/.claude/kirpr/` и `~/.claude/skills/`, затем предлагает выбрать трекер (YouTrack, Jira или пропустить). При повторном запуске сохраняются конфигурация трекера и `custom-experts.md`.
+For a remote, non-interactive install, pass the target through the bootstrap:
 
-### Зависимости
+```bash
+curl -fsSL https://raw.githubusercontent.com/jerrdasur/kirpr-claude-toolset/main/install-remote.sh | sh -s -- --target codex
+```
 
-- **Claude Code** — команды работают как slash-commands внутри Claude Code
-- **Python 3** — скрипты загрузки задач из трекеров (только stdlib, без внешних зависимостей)
+The remote bootstrap downloads the repository archive and runs its local
+`install.sh`; it does not maintain a second list of installed files. To update,
+run the same remote command or pull a local clone and re-run `./install.sh`
+with the desired target.
 
-## Настройка трекера
+## Installed paths and migration
 
-Установщик настраивает трекер при первом запуске. Пропустили — отредактируйте `~/.claude/kirpr/config/tracker.md` (шаблон: `kirpr/config/tracker.md.template`).
+Both platforms share one read-only runtime at `~/.local/share/kirpr` and one
+mutable configuration directory at `~/.config/kirpr`. The platform-specific
+entry points are:
 
-### YouTrack
+| Platform | Installed path |
+|----------|----------------|
+| Codex skills | `~/.agents/skills` |
+| Claude Code skills | `~/.claude/skills` |
+| Claude Code adapters | `~/.claude/commands/kirpr` |
+
+On the first install, tracker configuration and custom experts are migrated
+from recognized legacy user locations into the shared configuration. If two
+different user-owned versions conflict, installation stops before replacing
+skills. Existing same-name skills are saved under `~/.config/kirpr/backups/`
+before replacement, and a failed install rolls back its own changes. Tracker
+and API tokens are never stored or printed by the installer: keep them in
+environment variables such as `YOUTRACK_TOKEN`, `JIRA_TOKEN`, and `JIRA_EMAIL`.
+
+Project state is platform-neutral: use `.kirpr/grill-me/lenses.md` and
+`.kirpr/expert-panel-ignore`. When the expert panel finds the older
+`.claude/expert-panel-ignore`, it shows both paths and asks before copying it
+to `.kirpr/expert-panel-ignore`; the installer never scans or rewrites project
+repositories.
+
+## Tracker configuration
+
+The installer asks for YouTrack, Jira, or no tracker on the first run. Edit
+`~/.config/kirpr/tracker.md` later if needed. Configure credentials in your
+shell environment:
 
 ```bash
 export YOUTRACK_URL=https://youtrack.example.com
-export YOUTRACK_TOKEN=<bearer-токен>
-```
+export YOUTRACK_TOKEN=<bearer-token>
 
-### Jira
-
-```bash
 export JIRA_URL=https://yourcompany.atlassian.net
-export JIRA_TOKEN=<api-токен>
-export JIRA_EMAIL=you@example.com  # для Jira Cloud (basic auth)
+export JIRA_TOKEN=<api-token>
+export JIRA_EMAIL=you@example.com
 ```
 
-## Обновление
+Python 3 is required for the tracker scripts; they use only the standard
+library.
+
+## Uninstall
+
+Remove only one platform or both with the same target selector:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jerrdasur/kirpr-claude-toolset/main/install-remote.sh | sh
+./uninstall.sh --target claude
+./uninstall.sh --target codex
+./uninstall.sh --target all
 ```
 
-Из локального клона:
+Uninstall reads the installation manifest and removes only its recorded paths.
+The shared runtime remains until the final selected platform is removed;
+`~/.config/kirpr` is retained. If an installation displaced a skill, uninstall
+offers to restore its backup. Project `.kirpr` and `.claude` directories are
+never removed.
 
-```bash
-cd ~/claude-toolset && git pull && ./install.sh
+## Repository layout
+
+```text
+commands/kirpr/  Claude Code command adapters
+installer/       shared installer logic
+kirpr/           shared runtime configuration, prompts, and scripts
+skills/          canonical Agent Skills for Codex and Claude Code
+install.sh       local installation
+install-remote.sh archive-based remote bootstrap
+uninstall.sh     manifest-scoped removal
 ```
 
-## Удаление
+## License
 
-```bash
-./uninstall.sh
-```
-
-Удаляет все файлы. Предложит сохранить конфигурацию трекера и `custom-experts.md`.
-
-## Структура проекта
-
-```
-commands/kirpr/          — промпты slash-команд (→ ~/.claude/commands/kirpr/)
-kirpr/
-  config/                — конфиги: workflow, шаблоны, рубрики, правила агентов
-  prompts/               — системные промпты (редактор текста)
-  scripts/               — Python-скрипты для YouTrack и Jira
-skills/expert-panel/     — скил ревью панелью (→ ~/.claude/skills/expert-panel/)
-  SKILL.md               — роутер, реестр ядра, severity, синтез
-  experts/               — персоны ядра
-  modes/                 — протоколы режимов: спека и diff
-  custom-experts.md      — пользовательские эксперты (не перезаписывается)
-skills/grill-me/         — скил прожарки гипотез (→ ~/.claude/skills/grill-me/)
-  SKILL.md               — протокол раунда, форматы журнала и состояния, остановка
-  phases/                — сборка линз и сборка итогового документа
-skills/kirpr-flow/       — скил рабочего цикла без git (→ ~/.claude/skills/kirpr-flow/)
-  SKILL.md               — роутер режимов, разбор аргументов
-  core/                  — общие правила: запрет git, форматы верификации, пути артефактов
-  modes/                 — точки входа по режимам
-  prompts/               — шаблоны промптов для субагентов
-install.sh               — локальная установка
-install-remote.sh        — установка из GitHub
-uninstall.sh             — удаление
-```
-
-## Лицензия
-
-Open source. Свободное использование.
+Open source. Free to use.

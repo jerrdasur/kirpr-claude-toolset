@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 import subprocess
+import tarfile
 import tempfile
 import unittest
 
@@ -264,3 +265,40 @@ class TestMigrationAndUninstall(InstallerCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(marker.read_text(encoding="utf-8"), "original\n")
+
+
+class TestRemoteInstall(InstallerCase):
+    def test_archive_delegates_target(self):
+        archive = self.root / "kirpr.tar.gz"
+        archive_root = "kirpr-claude-toolset-main"
+        with tarfile.open(archive, "w:gz") as tar:
+            for name in ("install.sh", "installer", "skills", "commands", "kirpr"):
+                tar.add(ROOT / name, arcname=f"{archive_root}/{name}")
+
+        curl = self.root / "curl"
+        curl.write_text(
+            "#!/usr/bin/env bash\n"
+            "set -eu\n"
+            "destination=\n"
+            "while [ \"$#\" -gt 0 ]; do\n"
+            "    case \"$1\" in\n"
+            "        -o) destination=\"$2\"; shift 2 ;;\n"
+            "        *) shift ;;\n"
+            "    esac\n"
+            "done\n"
+            "[ -n \"$destination\" ]\n"
+            "cp \"$KIRPR_TEST_ARCHIVE\" \"$destination\"\n",
+            encoding="utf-8",
+        )
+        curl.chmod(0o755)
+
+        self.run_script(
+            "install-remote.sh", "--target", "codex",
+            extra_env={
+                "KIRPR_CURL_BIN": str(curl),
+                "KIRPR_TEST_ARCHIVE": str(archive),
+            },
+        )
+
+        self.assertTrue((self.root / ".agents/skills/kirpr-task-fetch/SKILL.md").is_file())
+        self.assertFalse((self.root / ".claude/skills").exists())
