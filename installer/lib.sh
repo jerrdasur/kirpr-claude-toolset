@@ -270,6 +270,125 @@ manifest_owns() {
     return 1
 }
 
+managed_path_is_safe() {
+    local path parent
+
+    path="$1"
+    case "$path" in "$KIRPR_ROOT"/*) ;; *) return 1 ;; esac
+    case "$path/" in *'/../'*|*'/./'*|*'//'*) return 1 ;; esac
+    parent="$path"
+    while [ "$parent" != "$KIRPR_ROOT" ]; do
+        [ -L "$parent" ] && return 1
+        parent="${parent%/*}"
+    done
+    return 0
+}
+
+valid_managed_path() {
+    local target path skill command
+
+    target="$1"; path="$2"
+    managed_path_is_safe "$path" || return 1
+    case "$target" in
+        shared) [ "$path" = "$KIRPR_RUNTIME_DIR" ] && return 0 ;;
+        codex)
+            [ "$path" = "$KIRPR_CODEX_SKILLS_DIR" ] && return 0
+            for skill in "${KIRPR_SKILLS[@]}"; do
+                [ "$path" = "$KIRPR_CODEX_SKILLS_DIR/$skill" ] && return 0
+            done
+            ;;
+        claude)
+            [ "$path" = "$KIRPR_CLAUDE_SKILLS_DIR" ] && return 0
+            [ "$path" = "$KIRPR_CLAUDE_COMMANDS_DIR" ] && return 0
+            for skill in "${KIRPR_SKILLS[@]}"; do
+                [ "$path" = "$KIRPR_CLAUDE_SKILLS_DIR/$skill" ] && return 0
+            done
+            for command in "${KIRPR_COMMANDS[@]}"; do
+                [ "$path" = "$KIRPR_CLAUDE_COMMANDS_DIR/$command.md" ] && return 0
+            done
+            ;;
+    esac
+    return 1
+}
+
+valid_backup_original() {
+    local target original skill command
+
+    target="$1"; original="$2"
+    managed_path_is_safe "$original" || return 1
+    case "$target" in
+        shared) [ "$original" = "$KIRPR_RUNTIME_DIR" ] && return 0 ;;
+        codex)
+            for skill in "${KIRPR_SKILLS[@]}"; do
+                [ "$original" = "$KIRPR_CODEX_SKILLS_DIR/$skill" ] && return 0
+            done
+            ;;
+        claude)
+            for skill in "${KIRPR_SKILLS[@]}"; do
+                [ "$original" = "$KIRPR_CLAUDE_SKILLS_DIR/$skill" ] && return 0
+            done
+            for command in "${KIRPR_COMMANDS[@]}"; do
+                [ "$original" = "$KIRPR_CLAUDE_COMMANDS_DIR/$command.md" ] && return 0
+            done
+            ;;
+    esac
+    case "$target:$original" in
+        "shared:$KIRPR_CONFIG_DIR/custom-experts.md"|"shared:$KIRPR_CONFIG_DIR/tracker.md"|\
+        "codex:$KIRPR_CODEX_SKILLS_DIR/kirpr-adr")
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+valid_backup_path() {
+    local backup root parent
+
+    backup="$1"; root="$KIRPR_CONFIG_DIR/backups"
+    case "$backup" in "$root"/*) ;; *) return 1 ;; esac
+    case "$backup/" in *'/../'*|*'/./'*|*'//'*) return 1 ;; esac
+    managed_path_is_safe "$root" || return 1
+    parent="$backup"
+    while [ "$parent" != "$root" ]; do
+        [ -L "$parent" ] && return 1
+        parent="${parent%/*}"
+    done
+    [ -L "$root" ] && return 1
+    return 0
+}
+
+validate_manifest() {
+    local line kind target path backup extra valid
+
+    [ -f "$KIRPR_MANIFEST" ] || return 0
+    valid=1
+    while IFS= read -r line || [ -n "$line" ]; do
+        IFS=$'\t' read -r kind target path backup extra <<< "$line"
+        case "$kind" in
+            version)
+                [ "$target" = 1 ] && [ -z "$path" ] && [ -z "$backup" ] && [ -z "$extra" ] || { valid=0; break; }
+                ;;
+            target)
+                case "$target" in codex|claude) ;; *) valid=0; break ;; esac
+                [ -z "$path" ] && [ -z "$backup" ] && [ -z "$extra" ] || { valid=0; break; }
+                ;;
+            path)
+                case "$target" in shared|codex|claude) ;; *) valid=0; break ;; esac
+                valid_managed_path "$target" "$path" && [ -z "$backup" ] && [ -z "$extra" ] || { valid=0; break; }
+                ;;
+            backup)
+                case "$target" in shared|codex|claude) ;; *) valid=0; break ;; esac
+                valid_backup_original "$target" "$path" && valid_backup_path "$backup" && [ -z "$extra" ] || { valid=0; break; }
+                ;;
+            *) valid=0; break ;;
+        esac
+    done < "$KIRPR_MANIFEST"
+    if [ "$valid" -ne 1 ]; then
+        kirpr_error 'Invalid install manifest'
+        return 1
+    fi
+}
+
 backup_path() {
     local original relative
     original="$1"; relative="${original#"$KIRPR_ROOT"/}"
@@ -282,8 +401,16 @@ begin_install_transaction() {
     KIRPR_ROLLBACK_DIR="$(mktemp -d)"
     KIRPR_ROLLBACK_RECORDS="$KIRPR_ROLLBACK_DIR/records"
     KIRPR_MANIFEST_RECORDS="$KIRPR_ROLLBACK_DIR/manifest-records"
-    KIRPR_BACKUP_DIR="$KIRPR_CONFIG_DIR/backups/$(date +%Y%m%d-%H%M%S)"
+    KIRPR_BACKUP_DIR=''
     : > "$KIRPR_ROLLBACK_RECORDS"; : > "$KIRPR_MANIFEST_RECORDS"
+}
+
+ensure_backup_dir() {
+    [ -n "$KIRPR_BACKUP_DIR" ] && return 0
+    managed_path_is_safe "$KIRPR_CONFIG_DIR" || return 1
+    [ -L "$KIRPR_CONFIG_DIR/backups" ] && return 1
+    mkdir -p "$KIRPR_CONFIG_DIR/backups"
+    KIRPR_BACKUP_DIR="$(mktemp -d "$KIRPR_CONFIG_DIR/backups/$(date +%Y%m%d-%H%M%S).XXXXXX")"
 }
 
 record_rollback() {
@@ -292,7 +419,8 @@ record_rollback() {
     while IFS=$'\t' read -r state recorded_path saved; do [ "$recorded_path" = "$destination" ] && return 0; done < "$KIRPR_ROLLBACK_RECORDS"
     relative="${destination#"$KIRPR_ROOT"/}"; saved="$KIRPR_ROLLBACK_DIR/original/$relative"
     if [ -e "$destination" ] || [ -L "$destination" ]; then
-        mkdir -p "$(dirname "$saved")"; cp -R "$destination" "$saved"
+        mkdir -p "$(dirname "$saved")" || return $?
+        cp -R "$destination" "$saved" || return $?
         printf 'present\t%s\t%s\n' "$destination" "$saved" >> "$KIRPR_ROLLBACK_RECORDS"
     else
         printf 'absent\t%s\t\n' "$destination" >> "$KIRPR_ROLLBACK_RECORDS"
@@ -300,10 +428,13 @@ record_rollback() {
 }
 
 backup_displaced() {
-    local target destination backup
-    target="$1"; destination="$2"
-    if ! manifest_owns "$destination" && { [ -e "$destination" ] || [ -L "$destination" ]; }; then
-        backup="$(backup_path "$destination")"; mkdir -p "$(dirname "$backup")"; cp -R "$destination" "$backup"
+    local target destination force backup
+    target="$1"; destination="$2"; force="${3:-0}"
+    if { [ "$force" = 1 ] || ! manifest_owns "$destination"; } && { [ -e "$destination" ] || [ -L "$destination" ]; }; then
+        ensure_backup_dir || return $?
+        backup="$(backup_path "$destination")"
+        mkdir -p "$(dirname "$backup")" || return $?
+        cp -R "$destination" "$backup" || return $?
         record_backup "$target" "$destination" "$backup"
     fi
 }
@@ -311,9 +442,14 @@ backup_displaced() {
 replace_managed_path() {
     local target source destination
     target="$1"; source="$2"; destination="$3"
-    record_rollback "$destination"; backup_displaced "$target" "$destination"; KIRPR_MUTATION_STARTED=1
-    mkdir -p "$(dirname "$destination")"; rm -rf "$destination"; cp -R "$source" "$destination"
+    record_rollback "$destination" || return $?
+    backup_displaced "$target" "$destination" || return $?
+    KIRPR_MUTATION_STARTED=1
+    mkdir -p "$(dirname "$destination")" || return $?
+    rm -rf "$destination" || return $?
+    cp -R "$source" "$destination" || return $?
     if [ "${KIRPR_TEST_FAIL_AFTER_INSTALL:-}" = 1 ] && [ "$KIRPR_FAIL_INJECTED" -eq 0 ]; then KIRPR_FAIL_INJECTED=1; return 90; fi
+    if [ "${KIRPR_TEST_FAIL_AFTER_SKILL:-}" = "$(basename "$destination")" ]; then return 90; fi
 }
 
 install_user_config() {
@@ -331,7 +467,8 @@ retire_codex_adr() {
     local destination
     destination="$KIRPR_CODEX_SKILLS_DIR/kirpr-adr"
     [ -e "$destination" ] || [ -L "$destination" ] || return 0
-    record_rollback "$destination"; backup_displaced codex "$destination"
+    record_rollback "$destination" || return $?
+    backup_displaced codex "$destination" 1 || return $?
     # shellcheck disable=SC2034 # Read by install.sh's EXIT trap.
     KIRPR_MUTATION_STARTED=1
     rm -rf "$destination"

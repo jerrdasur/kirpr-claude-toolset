@@ -179,3 +179,88 @@ class TestMigrationAndUninstall(InstallerCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(marker.read_text(encoding="utf-8"), "original\n")
         self.assertEqual(manifest.read_text(encoding="utf-8"), "version\t1\n")
+
+    def test_rejects_untrusted_manifest_before_uninstall_mutation(self):
+        victim = self.seed("not-managed", "keep\n")
+        manifest = self.seed(
+            ".config/kirpr/install-manifest",
+            "version\t1\ntarget\tcodex\n"
+            f"path\tcodex\t{victim}\n",
+        )
+        result = self.run_script("uninstall.sh", "--target", "codex", check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(victim.read_text(encoding="utf-8"), "keep\n")
+        self.assertIn("Invalid install manifest", result.stderr)
+        self.assertTrue(manifest.exists())
+
+    def test_rejects_untrusted_backup_record_before_uninstall_mutation(self):
+        skill = self.seed(".agents/skills/kirpr-text/marker", "keep\n")
+        outside_backup = self.seed("not-a-backup", "keep\n")
+        self.seed(
+            ".config/kirpr/install-manifest",
+            "version\t1\ntarget\tcodex\n"
+            f"path\tcodex\t{self.root / '.agents/skills/kirpr-text'}\n"
+            f"backup\tcodex\t{self.root / '.agents/skills/kirpr-text'}\t{outside_backup}\n",
+        )
+        result = self.run_script("uninstall.sh", "--target", "codex", check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(skill.read_text(encoding="utf-8"), "keep\n")
+        self.assertTrue(outside_backup.exists())
+
+    def test_last_uninstall_keeps_runtime_without_shared_manifest_record(self):
+        self.run_script("install.sh", "--target", "codex")
+        manifest = self.root / ".config/kirpr/install-manifest"
+        manifest.write_text(
+            "\n".join(
+                line for line in manifest.read_text(encoding="utf-8").splitlines()
+                if not line.startswith("path\tshared\t")
+            ) + "\n",
+            encoding="utf-8",
+        )
+        self.run_script("uninstall.sh", "--target", "codex")
+        self.assertTrue((self.root / ".local/share/kirpr").exists())
+
+    def test_final_uninstall_restores_shared_runtime_backup(self):
+        self.seed(".local/share/kirpr/marker", "original runtime\n")
+        self.input_file.write_text("3\n", encoding="utf-8")
+        self.run_script("install.sh", "--target", "codex")
+        self.input_file.write_text("y\n", encoding="utf-8")
+        self.run_script("uninstall.sh", "--target", "codex")
+        marker = self.root / ".local/share/kirpr/marker"
+        self.assertEqual(marker.read_text(encoding="utf-8"), "original runtime\n")
+
+    def test_all_uninstall_prompts_once_and_restores_all_target_backups(self):
+        self.seed(".agents/skills/kirpr-text/marker", "codex original\n")
+        self.seed(".claude/skills/kirpr-text/marker", "claude original\n")
+        self.input_file.write_text("3\n", encoding="utf-8")
+        self.run_script("install.sh", "--target", "all")
+        self.input_file.write_text("y\n", encoding="utf-8")
+        result = self.run_script("uninstall.sh", "--target", "all")
+        self.assertEqual(result.stdout.count("Restore displaced content"), 1)
+        self.assertEqual(
+            (self.root / ".agents/skills/kirpr-text/marker").read_text(encoding="utf-8"),
+            "codex original\n",
+        )
+        self.assertEqual(
+            (self.root / ".claude/skills/kirpr-text/marker").read_text(encoding="utf-8"),
+            "claude original\n",
+        )
+
+    def test_backups_do_not_collide_within_one_second(self):
+        self.seed(".agents/skills/kirpr-text/old", "first\n")
+        self.input_file.write_text("3\n3\n", encoding="utf-8")
+        self.run_script("install.sh", "--target", "codex")
+        self.seed(".agents/skills/kirpr-adr/SKILL.md", "second\n")
+        self.run_script("install.sh", "--target", "codex")
+        backups = self.root / ".config/kirpr/backups"
+        self.assertEqual(len([path for path in backups.iterdir() if path.is_dir()]), 2)
+
+    def test_later_failure_restores_preexisting_replaced_skill(self):
+        marker = self.seed(".agents/skills/kirpr-text/marker", "original\n")
+        self.seed(".config/kirpr/install-manifest", "version\t1\n")
+        result = self.run_script(
+            "install.sh", "--target", "codex", check=False,
+            extra_env={"KIRPR_TEST_FAIL_AFTER_SKILL": "kirpr-flow"},
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(marker.read_text(encoding="utf-8"), "original\n")

@@ -20,6 +20,7 @@ main() {
     parse_args "$@"
     [ -n "$KIRPR_TARGET" ] || choose_target
     resolve_paths
+    validate_manifest
     validate_bundle "$REPO_DIR"
     KIRPR_STAGE_DIR="$(mktemp -d)"
     trap 'rm -rf "$KIRPR_STAGE_DIR"' EXIT
