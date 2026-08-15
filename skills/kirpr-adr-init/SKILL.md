@@ -90,13 +90,77 @@ self-review. При локальных ADR прочитай все, выбери
 достаточно ли примеров.
 
 При greenfield объясни цель и загрузи три публичных ADR разного качества
-(слабый ~3–5, средний ~5–7, сильный 8+), по одному. Используй каталог:
-Arachne (003/006/009), Spotify Backstage (002/004), GOV.UK AWS
-(0002/0003), National Archives TDR (0001). Для каждого покажи текст,
-K1–K6 (K5 N/A), anti-bias оценку вниз, 2–3-предложенческий ориентир,
-таблицу, подтверждение и ориентир команды. При недоступном URL попробуй другой;
-при нескольких ошибках предложи вставить ADR, WebSearch или пропустить с
+(слабый ~3–5, средний ~5–7, сильный 8+), по одному. Используй этот каталог:
+
+#### Категория: High quality
+
+- **Arachne Framework** — глубокие технические ADR по Clojure-фреймворку
+  - URL: `https://raw.githubusercontent.com/arachne-framework/architecture/master/adr-NNN.md`
+    (NNN = 001–017)
+  - Рекомендованные: adr-003 (config), adr-006 (runtime), adr-009 (Datomic
+    ontology)
+- **Spotify Backstage** — ADR для developer portal, формат MADR
+  - URL: `https://raw.githubusercontent.com/backstage/backstage/master/docs/architecture-decisions/adrNNN.md`
+    (NNN = 002, 003, 004, 005, 006, 009, 011, 013)
+  - Рекомендованные: adr002 (catalog file format), adr004 (module feature
+    flags)
+
+#### Категория: Medium quality
+
+- **GOV.UK AWS** — лаконичные инфра-ADR в стиле Nygard
+  - URL: `https://raw.githubusercontent.com/alphagov/govuk-aws/main/docs/architecture/decisions/NNNN-*.md`
+  - Index: `https://raw.githubusercontent.com/alphagov/govuk-aws/main/docs/architecture/decisions/README.md`
+  - Рекомендованные: 0002-hosting-platforms, 0003-aws-networking-outline
+
+#### Категория: Variable (есть и слабые, и хорошие)
+
+- **National Archives TDR** — 35+ ADR, широкий спектр качества
+  - URL: `https://raw.githubusercontent.com/nationalarchives/tdr-dev-documentation/master/architecture-decision-records/NNNN-*.md`
+  - Рекомендованные для слабого примера: 0001 (use ADRs — очень короткий)
+
+Для каждого ADR покажи текст, оцени K1–K6 (для внешнего K5 N/A), при сомнении
+ставь lower score, сформулируй 2–3-предложенческий ориентир, запроси
+корректировки и ориентир команды. При недоступном URL попробуй другой; при
+нескольких ошибках предложи вставить ADR, WebSearch или пропустить с
 предупреждением.
+
+### Формат калибровочных примеров
+
+Для **внешних** ADR (из интернета):
+
+```markdown
+### Пример N: {краткое описание} — {качество} ADR (score ~X/10)
+
+Источник: {URL}
+
+Оценки:
+- К1 Context Clarity: **{0-10}** — {1 строка обоснования}
+- К2 Alternatives & Trade-offs: **{0-10}** — {1 строка}
+- К3 Decision Clarity: **{0-10}** — {1 строка}
+- К4 Consequences Specificity: **{0-10}** — {1 строка}
+- К5 Codebase & ADR Alignment: **N/A** — внешний ADR, alignment не оценивается
+- К6 Conciseness & Density: **{0-10}** — {1 строка}
+
+**Ориентир:** {2-3 предложения}
+```
+
+Для **локальных** ADR (из репозитория):
+
+```markdown
+### Пример N: {filename} — {качество} ADR (score ~X/10)
+
+Файл: `{path}` (существующий ADR {ID})
+
+Оценки:
+- К1 Context Clarity: **{0-10}** — {1 строка}
+- К2 Alternatives & Trade-offs: **{0-10}** — {1 строка}
+- К3 Decision Clarity: **{0-10}** — {1 строка}
+- К4 Consequences Specificity: **{0-10}** — {1 строка}
+- К5 Codebase & ADR Alignment: **{0-10 / N/A}** — {1 строка}
+- К6 Conciseness & Density: **{0-10}** — {1 строка}
+
+**Ориентир:** {2-3 предложения}
+```
 
 Сохраняй только источник/путь, K1–K6 и ориентир, не полный ADR. После примеров
 добавь эталон 8+/10 (Context, Alternatives, Decision, Consequences).

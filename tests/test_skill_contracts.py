@@ -100,3 +100,33 @@ class TestAdrAndTextSkills(unittest.TestCase):
         for command, skill in self.CASES:
             with self.subTest(command=command):
                 assert_claude_adapter(self, command, skill)
+
+
+class TestAdrInitCalibrationCatalogue(unittest.TestCase):
+    def setUp(self):
+        self.skill = (ROOT / "skills" / "kirpr-adr-init" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+    def test_greenfield_catalogue_has_canonical_source_urls(self):
+        for url in (
+            "https://raw.githubusercontent.com/arachne-framework/architecture/master/adr-NNN.md",
+            "https://raw.githubusercontent.com/backstage/backstage/master/docs/architecture-decisions/adrNNN.md",
+            "https://raw.githubusercontent.com/alphagov/govuk-aws/main/docs/architecture/decisions/NNNN-*.md",
+            "https://raw.githubusercontent.com/nationalarchives/tdr-dev-documentation/master/architecture-decision-records/NNNN-*.md",
+        ):
+            with self.subTest(url=url):
+                self.assertIn(url, self.skill)
+
+    def test_calibration_examples_keep_distinct_local_and_external_formats(self):
+        for detail in (
+            "Для **внешних** ADR (из интернета):",
+            "Источник: {URL}",
+            "К5 Codebase & ADR Alignment: **N/A** — внешний ADR",
+            "Для **локальных** ADR (из репозитория):",
+            "Файл: `{path}` (существующий ADR {ID})",
+            "К5 Codebase & ADR Alignment: **{0-10 / N/A}**",
+            "К6 Conciseness & Density",
+        ):
+            with self.subTest(detail=detail):
+                self.assertIn(detail, self.skill)
