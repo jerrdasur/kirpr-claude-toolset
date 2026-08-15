@@ -211,6 +211,7 @@ setup_tracker() {
             ;;
     esac
 
+    mkdir -p "$KIRPR_STAGE_DIR/user-config"
     awk \
         -v tracker_type="$tracker_type" \
         -v tracker_issue_url="$tracker_issue_url" \
@@ -240,18 +241,29 @@ setup_tracker() {
             next
         }
         { print }
-    ' "$KIRPR_STAGE_DIR/runtime/config/tracker.md.template" > "$KIRPR_CONFIG_DIR/tracker.md"
+    ' "$KIRPR_STAGE_DIR/runtime/config/tracker.md.template" \
+        > "$KIRPR_STAGE_DIR/user-config/tracker.md"
     printf '%s\n' "Tracker configured: $tracker_type"
 }
 
 prepare_user_config() {
-    mkdir -p "$KIRPR_CONFIG_DIR"
+    local seed_custom
+
+    seed_custom=0
     if [ ! -f "$KIRPR_CONFIG_DIR/custom-experts.md" ]; then
-        cp "$KIRPR_STAGE_DIR/runtime/config/custom-experts.md.template" \
-            "$KIRPR_CONFIG_DIR/custom-experts.md"
+        seed_custom=1
     fi
     if [ ! -f "$KIRPR_CONFIG_DIR/tracker.md" ]; then
         setup_tracker
+    fi
+
+    mkdir -p "$KIRPR_CONFIG_DIR"
+    if [ "$seed_custom" -eq 1 ]; then
+        cp "$KIRPR_STAGE_DIR/runtime/config/custom-experts.md.template" \
+            "$KIRPR_CONFIG_DIR/custom-experts.md"
+    fi
+    if [ -f "$KIRPR_STAGE_DIR/user-config/tracker.md" ]; then
+        cp "$KIRPR_STAGE_DIR/user-config/tracker.md" "$KIRPR_CONFIG_DIR/tracker.md"
     fi
 }
 

@@ -31,7 +31,7 @@ class InstallerCase(unittest.TestCase):
         if with_input:
             env["KIRPR_INPUT_FILE"] = str(self.input_file)
         else:
-            env.pop("KIRPR_INPUT_FILE", None)
+            env["KIRPR_INPUT_FILE"] = str(self.root / "missing-input")
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
@@ -44,16 +44,33 @@ class TestCleanInstall(InstallerCase):
     def assert_skills(self, base):
         for name in ALL_SKILLS:
             self.assertTrue((base / name / "SKILL.md").is_file(), name)
+            self.assertTrue((base / name / "agents" / "openai.yaml").is_file(), name)
+
+    def manifest_records(self):
+        manifest = self.root / ".config" / "kirpr" / "install-manifest"
+        return {tuple(line.split("\t")) for line in manifest.read_text(encoding="utf-8").splitlines()}
 
     def test_codex_target(self):
         self.run_script("install.sh", "--target", "codex")
         self.assert_skills(self.root / ".agents" / "skills")
+        self.assertFalse((self.root / ".claude" / "skills").exists())
         self.assertFalse((self.root / ".claude" / "commands" / "kirpr").exists())
+        records = self.manifest_records()
+        self.assertIn(("target", "codex"), records)
+        self.assertIn(("path", "codex", str(self.root / ".agents" / "skills")), records)
+        self.assertIn(("path", "shared", str(self.root / ".local" / "share" / "kirpr")), records)
+        self.assertFalse(any(record[1] == "claude" for record in records if len(record) > 1))
 
     def test_claude_target(self):
         self.run_script("install.sh", "--target", "claude")
         self.assert_skills(self.root / ".claude" / "skills")
         self.assertEqual(len(list((self.root / ".claude" / "commands" / "kirpr").glob("*.md"))), 12)
+        self.assertFalse((self.root / ".agents" / "skills").exists())
+        records = self.manifest_records()
+        self.assertIn(("target", "claude"), records)
+        self.assertIn(("path", "claude", str(self.root / ".claude" / "skills")), records)
+        self.assertIn(("path", "claude", str(self.root / ".claude" / "commands" / "kirpr")), records)
+        self.assertFalse(any(record[1] == "codex" for record in records if len(record) > 1))
 
     def test_all_target(self):
         self.run_script("install.sh", "--target", "all")
@@ -72,6 +89,17 @@ class TestCleanInstall(InstallerCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("--target", result.stderr)
         self.assertFalse((self.root / ".agents").exists())
+
+    def test_tracker_input_failure_leaves_no_destinations(self):
+        result = self.run_script(
+            "install.sh", "--target", "codex", check=False, with_input=False
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse((self.root / ".config").exists())
+        self.assertFalse((self.root / ".local").exists())
+        self.assertFalse((self.root / ".agents").exists())
+        self.assertFalse((self.root / ".claude").exists())
+        self.assertFalse((self.root / ".config" / "kirpr" / "install-manifest").exists())
 
     def test_unknown_target_fails_without_writes(self):
         result = self.run_script("install.sh", "--target", "other", check=False)
