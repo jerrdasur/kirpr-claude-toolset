@@ -108,7 +108,7 @@ with the desired target.
 
 ## Installed paths and migration
 
-Both platforms share one read-only runtime at `~/.local/share/kirpr` and one
+Both platforms share one installer-managed runtime at `~/.local/share/kirpr` and one
 mutable configuration directory at `~/.config/kirpr`. The platform-specific
 entry points are:
 

@@ -20,3 +20,7 @@ class TestReadme(unittest.TestCase):
                       "~/.config/kirpr", "~/.local/share/kirpr"):
             with self.subTest(value=value):
                 self.assertIn(value, self.text)
+
+    def test_runtime_is_documented_as_installer_managed(self):
+        self.assertIn("installer-managed runtime", self.text)
+        self.assertNotIn("read-only runtime", self.text)

@@ -76,4 +76,4 @@ Jira:
 - **Покажи dry-run перед реальным созданием.**
 - **Не трогай декомпозицию.** Эта команда не читает и не пишет
   `create-plan.json` и `.created.json`. Для задач из декомпозиции есть
-  `/kirpr:tasks-push`.
+  Codex `$kirpr-tasks-push` и Claude Code `/kirpr:tasks-push`.

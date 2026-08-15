@@ -1,5 +1,6 @@
-display_name: Expert Panel
-short_description: Multi-persona Go project review
-default_prompt: "Use $expert-panel with the arguments I provide."
+interface:
+  display_name: Expert Panel
+  short_description: Multi-persona Go project review
+  default_prompt: "Use $expert-panel with the arguments I provide."
 policy:
   allow_implicit_invocation: false

@@ -112,6 +112,7 @@ main() {
     [ -n "$KIRPR_TARGET" ] || choose_target
     resolve_paths
     [ -f "$KIRPR_MANIFEST" ] || { printf '%s\n' 'No kirpr installation manifest found.'; return 0; }
+    validate_destination_layout
     validate_manifest
     remove_shared=0
     if selection_removes_last_target "$KIRPR_TARGET" && manifest_has_shared_runtime; then

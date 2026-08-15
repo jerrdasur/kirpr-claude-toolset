@@ -117,19 +117,60 @@ resolve_paths() {
 }
 
 validate_bundle() {
-    local repo_dir skill command config prompt script
+    local repo_dir skill command config prompt script skill_dir adapter expected actual
 
     repo_dir="$1"
+    for skill_dir in "$repo_dir"/skills/* "$repo_dir"/skills/.[!.]* "$repo_dir"/skills/..?*; do
+        [ -d "$skill_dir" ] || continue
+        skill="${skill_dir##*/}"
+        if ! known_skill "$skill"; then
+            kirpr_error "Unexpected skill in bundle: $skill"
+            return 1
+        fi
+    done
     for skill in "${KIRPR_SKILLS[@]}"; do
         if [ ! -f "$repo_dir/skills/$skill/SKILL.md" ] || \
            [ ! -f "$repo_dir/skills/$skill/agents/openai.yaml" ]; then
             kirpr_error "Incomplete skill bundle: $skill"
             return 1
         fi
+        if ! valid_skill_frontmatter "$skill" "$repo_dir/skills/$skill/SKILL.md"; then
+            kirpr_error "Invalid skill front matter: $skill"
+            return 1
+        fi
+        if ! valid_openai_metadata "$skill" "$repo_dir/skills/$skill/agents/openai.yaml"; then
+            kirpr_error "Invalid OpenAI metadata: $skill"
+            return 1
+        fi
+    done
+    for adapter in "$repo_dir"/commands/kirpr/*.md \
+        "$repo_dir"/commands/kirpr/.[!.]*.md \
+        "$repo_dir"/commands/kirpr/..?*.md; do
+        [ -f "$adapter" ] || continue
+        command="${adapter##*/}"; command="${command%.md}"
+        if ! known_command "$command"; then
+            kirpr_error "Unexpected Claude adapter: $command"
+            return 1
+        fi
     done
     for command in "${KIRPR_COMMANDS[@]}"; do
         if [ ! -f "$repo_dir/commands/kirpr/$command.md" ]; then
             kirpr_error "Missing Claude adapter: $command"
+            return 1
+        fi
+        expected="$(printf '%s\n' \
+            '# Совместимый вызов kirpr' \
+            '' \
+            "Полностью прочитай \`~/.claude/skills/kirpr-$command/SKILL.md\` и следуй ему." \
+            '' \
+            'Аргументы явного вызова:' \
+            '' \
+            '```text' \
+            "\$ARGUMENTS" \
+            '```')"
+        actual="$(cat "$repo_dir/commands/kirpr/$command.md")"
+        if [ "$actual" != "$expected" ]; then
+            kirpr_error "Invalid Claude adapter: $command"
             return 1
         fi
     done
@@ -151,6 +192,98 @@ validate_bundle() {
             return 1
         fi
     done
+}
+
+known_skill() {
+    local expected
+
+    for expected in "${KIRPR_SKILLS[@]}"; do
+        [ "$1" = "$expected" ] && return 0
+    done
+    return 1
+}
+
+known_command() {
+    local expected
+
+    for expected in "${KIRPR_COMMANDS[@]}"; do
+        [ "$1" = "$expected" ] && return 0
+    done
+    return 1
+}
+
+valid_skill_frontmatter() {
+    local expected file
+
+    expected="$1"; file="$2"
+    awk -v expected="$expected" '
+        NR == 1 {
+            if ($0 != "---") bad = 1
+            next
+        }
+        closed { next }
+        $0 == "---" { closed = 1; next }
+        /^[[:space:]]*$/ { next }
+        {
+            if ($0 !~ /^[A-Za-z_][A-Za-z0-9_-]*:[[:space:]]*.+$/) {
+                bad = 1
+                next
+            }
+        }
+        /^name:[[:space:]]*/ {
+            value = $0
+            sub(/^name:[[:space:]]*/, "", value)
+            if ((substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") ||
+                (substr(value, 1, 1) == "\047" && substr(value, length(value), 1) == "\047")) {
+                value = substr(value, 2, length(value) - 2)
+            }
+            names++
+            if (value != expected) bad = 1
+        }
+        /^description:[[:space:]]*/ { descriptions++ }
+        END { exit !(closed && names == 1 && descriptions == 1 && !bad) }
+    ' "$file"
+}
+
+valid_openai_metadata() {
+    local expected file
+
+    expected="$1"; file="$2"
+    awk -v expected="$expected" '
+        function scalar(line, value) {
+            value = line
+            sub(/^[^:]+:[[:space:]]*/, "", value)
+            sub(/[[:space:]]+$/, "", value)
+            if ((substr(value, 1, 1) == "\"" && substr(value, length(value), 1) == "\"") ||
+                (substr(value, 1, 1) == "\047" && substr(value, length(value), 1) == "\047")) {
+                value = substr(value, 2, length(value) - 2)
+            }
+            return value
+        }
+        /^[[:space:]]*$/ { next }
+        /^interface:[[:space:]]*$/ { interface_sections++; section = "interface"; next }
+        /^policy:[[:space:]]*$/ { policy_sections++; section = "policy"; next }
+        /^  display_name:[[:space:]]*.+$/ && section == "interface" {
+            display_names++; display_name = scalar($0); next
+        }
+        /^  short_description:[[:space:]]*.+$/ && section == "interface" {
+            short_descriptions++; short_description = scalar($0); next
+        }
+        /^  default_prompt:[[:space:]]*.+$/ && section == "interface" {
+            default_prompts++; default_prompt = scalar($0); next
+        }
+        /^  allow_implicit_invocation:[[:space:]]*false[[:space:]]*$/ && section == "policy" {
+            allow_false++; next
+        }
+        { bad = 1 }
+        END {
+            valid = interface_sections == 1 && policy_sections == 1 &&
+                display_names == 1 && short_descriptions == 1 && default_prompts == 1 &&
+                allow_false == 1 && display_name != "" && short_description != "" &&
+                index(default_prompt, "$" expected) > 0 && !bad
+            exit !valid
+        }
+    ' "$file"
 }
 
 stage_bundle() {
@@ -282,6 +415,48 @@ managed_path_is_safe() {
         parent="${parent%/*}"
     done
     return 0
+}
+
+require_safe_destination() {
+    if ! managed_path_is_safe "$1"; then
+        kirpr_error "Unsafe installer destination: $1"
+        return 1
+    fi
+}
+
+validate_destination_layout() {
+    local path skill command
+
+    for path in \
+        "$KIRPR_CONFIG_DIR" \
+        "$KIRPR_CONFIG_DIR/custom-experts.md" \
+        "$KIRPR_CONFIG_DIR/tracker.md" \
+        "$KIRPR_CONFIG_DIR/backups" \
+        "$KIRPR_MANIFEST" \
+        "$KIRPR_RUNTIME_DIR"; do
+        require_safe_destination "$path" || return $?
+    done
+    case "$KIRPR_TARGET" in
+        codex|all)
+            require_safe_destination "$KIRPR_CODEX_SKILLS_DIR" || return $?
+            for skill in "${KIRPR_SKILLS[@]}"; do
+                require_safe_destination "$KIRPR_CODEX_SKILLS_DIR/$skill" || return $?
+            done
+            require_safe_destination "$KIRPR_CODEX_SKILLS_DIR/kirpr-adr" || return $?
+            ;;
+    esac
+    case "$KIRPR_TARGET" in
+        claude|all)
+            require_safe_destination "$KIRPR_CLAUDE_SKILLS_DIR" || return $?
+            require_safe_destination "$KIRPR_CLAUDE_COMMANDS_DIR" || return $?
+            for skill in "${KIRPR_SKILLS[@]}"; do
+                require_safe_destination "$KIRPR_CLAUDE_SKILLS_DIR/$skill" || return $?
+            done
+            for command in "${KIRPR_COMMANDS[@]}"; do
+                require_safe_destination "$KIRPR_CLAUDE_COMMANDS_DIR/$command.md" || return $?
+            done
+            ;;
+    esac
 }
 
 valid_managed_path() {
@@ -448,8 +623,17 @@ replace_managed_path() {
     mkdir -p "$(dirname "$destination")" || return $?
     rm -rf "$destination" || return $?
     cp -R "$source" "$destination" || return $?
-    if [ "${KIRPR_TEST_FAIL_AFTER_INSTALL:-}" = 1 ] && [ "$KIRPR_FAIL_INJECTED" -eq 0 ]; then KIRPR_FAIL_INJECTED=1; return 90; fi
-    if [ "${KIRPR_TEST_FAIL_AFTER_SKILL:-}" = "$(basename "$destination")" ]; then return 90; fi
+    # Internal rollback-test seam. Failure switches are inert for normal installs
+    # unless the test suite explicitly enables this gate.
+    if [ "${KIRPR_INTERNAL_TEST_MODE:-}" = 1 ]; then
+        if [ "${KIRPR_TEST_FAIL_AFTER_INSTALL:-}" = 1 ] && [ "$KIRPR_FAIL_INJECTED" -eq 0 ]; then
+            KIRPR_FAIL_INJECTED=1
+            return 90
+        fi
+        if [ "${KIRPR_TEST_FAIL_AFTER_SKILL:-}" = "$(basename "$destination")" ]; then
+            return 90
+        fi
+    fi
 }
 
 install_user_config() {

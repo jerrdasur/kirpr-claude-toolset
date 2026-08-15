@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -26,7 +27,10 @@ class InstallerCase(unittest.TestCase):
     def tearDown(self):
         self.temp.cleanup()
 
-    def run_script(self, script, *args, check=True, extra_env=None, with_input=True):
+    def run_script(
+        self, script, *args, check=True, extra_env=None, with_input=True,
+        script_root=ROOT,
+    ):
         env = os.environ.copy()
         env["KIRPR_INSTALL_ROOT"] = str(self.root)
         if with_input:
@@ -36,9 +40,27 @@ class InstallerCase(unittest.TestCase):
         if extra_env:
             env.update(extra_env)
         return subprocess.run(
-            [str(ROOT / script), *args], cwd=ROOT, env=env,
+            [str(script_root / script), *args], cwd=script_root, env=env,
             text=True, capture_output=True, check=check,
         )
+
+    def make_bundle_copy(self):
+        bundle_temp = tempfile.TemporaryDirectory()
+        self.addCleanup(bundle_temp.cleanup)
+        bundle = Path(bundle_temp.name) / "bundle"
+        bundle.mkdir()
+        for name in ("install.sh", "installer", "skills", "commands", "kirpr"):
+            source = ROOT / name
+            destination = bundle / name
+            if source.is_dir():
+                shutil.copytree(source, destination)
+            else:
+                shutil.copy2(source, destination)
+        return bundle
+
+    def assert_no_install_destinations(self):
+        for relative in (".config", ".local", ".claude"):
+            self.assertFalse((self.root / relative).exists(), relative)
 
 
 class TestCleanInstall(InstallerCase):
@@ -120,6 +142,22 @@ class TestCleanInstall(InstallerCase):
         self.assertNotIn("Скрипт:", text)
         self.assertNotIn(".claude", text)
 
+    def test_clean_install_rejects_symlinked_skills_destination_before_writes(self):
+        outside_temp = tempfile.TemporaryDirectory()
+        self.addCleanup(outside_temp.cleanup)
+        outside = Path(outside_temp.name)
+        agents = self.root / ".agents"
+        agents.mkdir()
+        (agents / "skills").symlink_to(outside, target_is_directory=True)
+
+        result = self.run_script("install.sh", "--target", "codex", check=False)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Unsafe installer destination", result.stderr)
+        self.assertEqual(list(outside.iterdir()), [])
+        self.assert_no_install_destinations()
+        self.assertFalse((self.root / ".config/kirpr/install-manifest").exists())
+
 
 class TestMigrationAndUninstall(InstallerCase):
     def seed(self, relative, text):
@@ -175,7 +213,10 @@ class TestMigrationAndUninstall(InstallerCase):
         manifest = self.seed(".config/kirpr/install-manifest", "version\t1\n")
         result = self.run_script(
             "install.sh", "--target", "codex", check=False,
-            extra_env={"KIRPR_TEST_FAIL_AFTER_INSTALL": "1"},
+            extra_env={
+                "KIRPR_INTERNAL_TEST_MODE": "1",
+                "KIRPR_TEST_FAIL_AFTER_INSTALL": "1",
+            },
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(marker.read_text(encoding="utf-8"), "original\n")
@@ -261,20 +302,146 @@ class TestMigrationAndUninstall(InstallerCase):
         self.seed(".config/kirpr/install-manifest", "version\t1\n")
         result = self.run_script(
             "install.sh", "--target", "codex", check=False,
-            extra_env={"KIRPR_TEST_FAIL_AFTER_SKILL": "kirpr-flow"},
+            extra_env={
+                "KIRPR_INTERNAL_TEST_MODE": "1",
+                "KIRPR_TEST_FAIL_AFTER_SKILL": "kirpr-flow",
+            },
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(marker.read_text(encoding="utf-8"), "original\n")
 
+    def test_test_failure_switch_is_inert_without_internal_gate(self):
+        result = self.run_script(
+            "install.sh", "--target", "codex", check=False,
+            extra_env={"KIRPR_TEST_FAIL_AFTER_SKILL": "kirpr-flow"},
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((self.root / ".agents/skills/kirpr-flow/SKILL.md").is_file())
+
+    def move_config_behind_symlink(self):
+        outside_temp = tempfile.TemporaryDirectory()
+        self.addCleanup(outside_temp.cleanup)
+        outside = Path(outside_temp.name) / "kirpr"
+        config = self.root / ".config/kirpr"
+        shutil.move(str(config), str(outside))
+        config.symlink_to(outside, target_is_directory=True)
+        return outside
+
+    def test_reinstall_rejects_symlinked_config_destination_before_writes(self):
+        self.run_script("install.sh", "--target", "codex")
+        outside = self.move_config_behind_symlink()
+        manifest = outside / "install-manifest"
+        original_manifest = manifest.read_text(encoding="utf-8")
+        skill = self.root / ".agents/skills/kirpr-text/SKILL.md"
+        original_skill = skill.read_text(encoding="utf-8")
+
+        result = self.run_script("install.sh", "--target", "codex", check=False)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Unsafe installer destination", result.stderr)
+        self.assertEqual(manifest.read_text(encoding="utf-8"), original_manifest)
+        self.assertEqual(skill.read_text(encoding="utf-8"), original_skill)
+        self.assertFalse((outside / "backups").exists())
+
+    def test_uninstall_rejects_symlinked_config_destination_before_writes(self):
+        self.run_script("install.sh", "--target", "codex")
+        outside = self.move_config_behind_symlink()
+        manifest = outside / "install-manifest"
+        original_manifest = manifest.read_text(encoding="utf-8")
+        skill = self.root / ".agents/skills/kirpr-text/SKILL.md"
+
+        result = self.run_script("uninstall.sh", "--target", "codex", check=False)
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Unsafe installer destination", result.stderr)
+        self.assertEqual(manifest.read_text(encoding="utf-8"), original_manifest)
+        self.assertTrue(skill.is_file())
+
+
+class TestBundlePreflight(InstallerCase):
+    def assert_rejected_before_mutation(self, bundle):
+        result = self.run_script(
+            "install.sh", "--target", "codex", check=False, script_root=bundle
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assert_no_install_destinations()
+        self.assertFalse((self.root / ".agents").exists())
+        return result
+
+    def test_rejects_mismatched_skill_frontmatter(self):
+        bundle = self.make_bundle_copy()
+        skill = bundle / "skills/kirpr-text/SKILL.md"
+        skill.write_text(
+            skill.read_text(encoding="utf-8").replace(
+                "name: kirpr-text", "name: wrong-name", 1
+            ),
+            encoding="utf-8",
+        )
+        result = self.assert_rejected_before_mutation(bundle)
+        self.assertIn("Invalid skill front matter", result.stderr)
+
+    def test_rejects_invalid_openai_metadata(self):
+        bundle = self.make_bundle_copy()
+        metadata = bundle / "skills/kirpr-text/agents/openai.yaml"
+        metadata.write_text(
+            metadata.read_text(encoding="utf-8").replace(
+                "allow_implicit_invocation: false",
+                "allow_implicit_invocation: true",
+            ),
+            encoding="utf-8",
+        )
+        result = self.assert_rejected_before_mutation(bundle)
+        self.assertIn("Invalid OpenAI metadata", result.stderr)
+
+    def test_rejects_adapter_with_extra_workflow_content(self):
+        bundle = self.make_bundle_copy()
+        adapter = bundle / "commands/kirpr/text.md"
+        adapter.write_text(
+            adapter.read_text(encoding="utf-8") + "\nDo additional work.\n",
+            encoding="utf-8",
+        )
+        result = self.assert_rejected_before_mutation(bundle)
+        self.assertIn("Invalid Claude adapter", result.stderr)
+
+    def test_rejects_extra_claude_adapter_inventory(self):
+        bundle = self.make_bundle_copy()
+        adapter = bundle / "commands/kirpr/unexpected.md"
+        adapter.write_text(
+            "# Совместимый вызов kirpr\n\nUnexpected adapter.\n",
+            encoding="utf-8",
+        )
+        result = self.assert_rejected_before_mutation(bundle)
+        self.assertIn("Unexpected Claude adapter", result.stderr)
+
+    def test_rejects_extra_skill_inventory(self):
+        bundle = self.make_bundle_copy()
+        extra = bundle / "skills/unexpected-skill"
+        (extra / "agents").mkdir(parents=True)
+        (extra / "SKILL.md").write_text(
+            "---\nname: unexpected-skill\ndescription: test\n---\n",
+            encoding="utf-8",
+        )
+        (extra / "agents/openai.yaml").write_text(
+            "interface:\n"
+            "  display_name: Unexpected\n"
+            "  short_description: Unexpected skill\n"
+            "  default_prompt: Use $unexpected-skill.\n"
+            "policy:\n"
+            "  allow_implicit_invocation: false\n",
+            encoding="utf-8",
+        )
+        result = self.assert_rejected_before_mutation(bundle)
+        self.assertIn("Unexpected skill in bundle", result.stderr)
+
+    def test_rejects_missing_skill_inventory(self):
+        bundle = self.make_bundle_copy()
+        shutil.rmtree(bundle / "skills/kirpr-text")
+        result = self.assert_rejected_before_mutation(bundle)
+        self.assertIn("Incomplete skill bundle", result.stderr)
+
 
 class TestRemoteInstall(InstallerCase):
-    def test_archive_delegates_target(self):
-        archive = self.root / "kirpr.tar.gz"
-        archive_root = "kirpr-claude-toolset-main"
-        with tarfile.open(archive, "w:gz") as tar:
-            for name in ("install.sh", "installer", "skills", "commands", "kirpr"):
-                tar.add(ROOT / name, arcname=f"{archive_root}/{name}")
-
+    def make_copying_curl(self):
         curl = self.root / "curl"
         curl.write_text(
             "#!/usr/bin/env bash\n"
@@ -291,14 +458,92 @@ class TestRemoteInstall(InstallerCase):
             encoding="utf-8",
         )
         curl.chmod(0o755)
+        return curl
+
+    def make_remote_tmp(self):
+        remote_tmp = self.root / "remote-tmp"
+        remote_tmp.mkdir()
+        return remote_tmp
+
+    def assert_remote_tmp_clean(self, remote_tmp):
+        self.assertEqual(list(remote_tmp.iterdir()), [])
+
+    def test_archive_delegates_target(self):
+        archive = self.root / "kirpr.tar.gz"
+        archive_root = "kirpr-claude-toolset-main"
+        with tarfile.open(archive, "w:gz") as tar:
+            for name in ("install.sh", "installer", "skills", "commands", "kirpr"):
+                tar.add(ROOT / name, arcname=f"{archive_root}/{name}")
+
+        curl = self.make_copying_curl()
+        remote_tmp = self.make_remote_tmp()
 
         self.run_script(
             "install-remote.sh", "--target", "codex",
             extra_env={
                 "KIRPR_CURL_BIN": str(curl),
                 "KIRPR_TEST_ARCHIVE": str(archive),
+                "TMPDIR": str(remote_tmp),
             },
         )
 
         self.assertTrue((self.root / ".agents/skills/kirpr-task-fetch/SKILL.md").is_file())
         self.assertFalse((self.root / ".claude/skills").exists())
+        self.assert_remote_tmp_clean(remote_tmp)
+
+    def test_curl_failure_is_offline_and_cleans_temporary_directory(self):
+        curl = self.root / "curl-failure"
+        curl.write_text("#!/usr/bin/env bash\nexit 7\n", encoding="utf-8")
+        curl.chmod(0o755)
+        remote_tmp = self.make_remote_tmp()
+
+        result = self.run_script(
+            "install-remote.sh", "--target", "codex", check=False,
+            extra_env={"KIRPR_CURL_BIN": str(curl), "TMPDIR": str(remote_tmp)},
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Failed to download kirpr installer archive", result.stderr)
+        self.assert_remote_tmp_clean(remote_tmp)
+
+    def test_malformed_archive_fails_and_cleans_temporary_directory(self):
+        archive = self.root / "malformed.tar.gz"
+        archive.write_text("not a tar archive\n", encoding="utf-8")
+        curl = self.make_copying_curl()
+        remote_tmp = self.make_remote_tmp()
+
+        result = self.run_script(
+            "install-remote.sh", "--target", "codex", check=False,
+            extra_env={
+                "KIRPR_CURL_BIN": str(curl),
+                "KIRPR_TEST_ARCHIVE": str(archive),
+                "TMPDIR": str(remote_tmp),
+            },
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Downloaded archive could not be extracted", result.stderr)
+        self.assert_remote_tmp_clean(remote_tmp)
+
+    def test_missing_bundle_content_fails_before_delegation_and_cleans_up(self):
+        archive = self.root / "incomplete.tar.gz"
+        archive_root = "kirpr-claude-toolset-main"
+        with tarfile.open(archive, "w:gz") as tar:
+            tar.add(ROOT / "install.sh", arcname=f"{archive_root}/install.sh")
+            tar.add(ROOT / "installer", arcname=f"{archive_root}/installer")
+        curl = self.make_copying_curl()
+        remote_tmp = self.make_remote_tmp()
+
+        result = self.run_script(
+            "install-remote.sh", "--target", "codex", check=False,
+            extra_env={
+                "KIRPR_CURL_BIN": str(curl),
+                "KIRPR_TEST_ARCHIVE": str(archive),
+                "TMPDIR": str(remote_tmp),
+            },
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("does not contain a complete kirpr installer", result.stderr)
+        self.assert_no_install_destinations()
+        self.assert_remote_tmp_clean(remote_tmp)

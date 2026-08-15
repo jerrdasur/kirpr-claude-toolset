@@ -21,12 +21,44 @@ def read_frontmatter(path):
     return text, match.group(1)
 
 
+def read_metadata(path):
+    result = {}
+    section = None
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        if not line.startswith(" "):
+            if not line.endswith(":"):
+                raise AssertionError(f"invalid top-level metadata: {path}: {line}")
+            section = line[:-1]
+            if section in result:
+                raise AssertionError(f"duplicate metadata section: {path}: {section}")
+            result[section] = {}
+            continue
+        match = re.fullmatch(r"  ([a-z_]+):\s+(.+)", line)
+        if section is None or not match:
+            raise AssertionError(f"invalid nested metadata: {path}: {line}")
+        key, value = match.groups()
+        if key in result[section]:
+            raise AssertionError(f"duplicate metadata field: {path}: {key}")
+        result[section][key] = value.strip('"')
+    return result
+
+
 def assert_explicit_skill(testcase, name):
     skill = ROOT / "skills" / name / "SKILL.md"
     metadata = ROOT / "skills" / name / "agents" / "openai.yaml"
     text, frontmatter = read_frontmatter(skill)
     testcase.assertRegex(frontmatter, rf"(?m)^name: ['\"]?{re.escape(name)}['\"]?$")
-    testcase.assertIn("allow_implicit_invocation: false", metadata.read_text(encoding="utf-8"))
+    parsed_metadata = read_metadata(metadata)
+    testcase.assertEqual(set(parsed_metadata), {"interface", "policy"})
+    testcase.assertEqual(
+        set(parsed_metadata["interface"]),
+        {"display_name", "short_description", "default_prompt"},
+    )
+    testcase.assertTrue(all(parsed_metadata["interface"].values()))
+    testcase.assertIn(f"${name}", parsed_metadata["interface"]["default_prompt"])
+    testcase.assertEqual(parsed_metadata["policy"], {"allow_implicit_invocation": "false"})
     testcase.assertNotIn("$ARGUMENTS", text)
 
 
@@ -84,6 +116,13 @@ class TestTrackerCrudSkills(unittest.TestCase):
         self.assertIn("запомни его как базовый URL", runtime)
         self.assertIn("базовый URL был определён при выполнении runtime-инструкции", create_skill)
 
+    def test_create_skill_cross_workflow_reference_shows_both_invocation_forms(self):
+        create_skill = (ROOT / "skills" / "kirpr-task-create" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("$kirpr-tasks-push", create_skill)
+        self.assertIn("/kirpr:tasks-push", create_skill)
+
 
 class TestDecompositionSkills(unittest.TestCase):
     CASES = (
@@ -121,6 +160,28 @@ class TestAdrAndTextSkills(unittest.TestCase):
         for command, skill in self.CASES:
             with self.subTest(command=command):
                 assert_claude_adapter(self, command, skill)
+
+    def test_text_requires_confirmed_destination_before_every_edit(self):
+        text = (ROOT / "skills" / "kirpr-text" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("Куда сохранить результат?", text)
+        self.assertIn("для любой задачи", text.lower())
+        self.assertIn("не начинай редактирование", text)
+        destination = text.index("Куда сохранить результат?")
+        editing = text.index("До редактуры")
+        execution = text.index("Выполни задачу")
+        self.assertLess(destination, editing)
+        self.assertLess(destination, execution)
+
+
+class TestExistingSkillPortability(unittest.TestCase):
+    def test_grill_me_discovers_both_project_guidance_files(self):
+        lenses = (ROOT / "skills" / "grill-me" / "phases" / "lenses.md").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("CLAUDE.md", lenses)
+        self.assertIn("AGENTS.md", lenses)
 
 
 class TestAdrInitCalibrationCatalogue(unittest.TestCase):
