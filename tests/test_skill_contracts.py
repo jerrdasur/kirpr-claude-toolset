@@ -54,3 +54,22 @@ class TestTrackerCrudSkills(unittest.TestCase):
         self.assertIn("`URL:`", runtime)
         self.assertIn("запомни его как базовый URL", runtime)
         self.assertIn("базовый URL был определён при выполнении runtime-инструкции", create_skill)
+
+
+class TestDecompositionSkills(unittest.TestCase):
+    CASES = (
+        ("tasks-decompose", "kirpr-tasks-decompose"),
+        ("tasks-review", "kirpr-tasks-review"),
+        ("tasks-adapt", "kirpr-tasks-adapt"),
+        ("tasks-push", "kirpr-tasks-push"),
+    )
+
+    def test_explicit_skills_exist(self):
+        for _, skill in self.CASES:
+            with self.subTest(skill=skill):
+                assert_explicit_skill(self, skill)
+
+    def test_claude_commands_are_thin_adapters(self):
+        for command, skill in self.CASES:
+            with self.subTest(command=command):
+                assert_claude_adapter(self, command, skill)

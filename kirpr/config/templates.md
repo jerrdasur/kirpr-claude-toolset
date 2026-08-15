@@ -13,7 +13,7 @@
 
 ## Загрузка контекста декомпозиции
 
-Паттерн загрузки для `/kirpr:tasks-review` и `/kirpr:tasks-adapt`:
+Паттерн загрузки для `$kirpr-tasks-review` и `$kirpr-tasks-adapt` в Codex или `/kirpr:tasks-review` и `/kirpr:tasks-adapt` в Claude Code:
 
 ### Вариант A: `.context.md` существует (быстрый путь)
 1. Прочитай `{dir}/.context.md` — кэш контекста из прошлой сессии.
@@ -24,7 +24,7 @@
 ### Вариант B: `.context.md` не существует (fallback)
 1. Прочитай `{dir}/source.md` и `{dir}/00-overview.md`.
 2. Прочитай все файлы `{dir}/*.md`.
-3. Прочитай `~/.claude/kirpr/config/tracker.md` для определения скрипта трекера. Загрузи данные задачи.
+3. Прочитай `~/.config/kirpr/tracker.md` для определения скрипта трекера. Загрузи данные задачи.
 4. Сообщи пользователю: "Файл `.context.md` не найден — загружаю полный контекст."
 
 ---
@@ -117,12 +117,12 @@
 
 ## Шаблон .context.md
 
-Файл `.context.md` создаётся в конце Фазы 5 команды `/kirpr:tasks-decompose` и кэширует контекст сессии.
+Файл `.context.md` создаётся в конце Фазы 5 `$kirpr-tasks-decompose` в Codex или `/kirpr:tasks-decompose` в Claude Code и кэширует контекст сессии.
 
 **Правила:**
 - Файл создаётся автоматически, не показывается пользователю для ревью.
 - Файл добавлен в `.gitignore` — это кэш, не артефакт.
-- При адаптации (`/kirpr:tasks-adapt`) файл обновляется, а не пересоздаётся.
+- При адаптации через `$kirpr-tasks-adapt` в Codex или `/kirpr:tasks-adapt` в Claude Code файл обновляется, а не пересоздаётся.
 
 ```markdown
 # .context.md — Кэш контекста декомпозиции {Номер задачи}
@@ -212,7 +212,7 @@
 
 ## Чеклист верификации
 
-Используется в `/kirpr:tasks-decompose` (Фаза 4) и `/kirpr:tasks-adapt` (Фаза D):
+Используется в `$kirpr-tasks-decompose` (Фаза 4) и `$kirpr-tasks-adapt` (Фаза D) в Codex или `/kirpr:tasks-decompose` (Фаза 4) и `/kirpr:tasks-adapt` (Фаза D) в Claude Code:
 
 ```
 Чеклист завершённости:
@@ -229,7 +229,7 @@
 
 ## Рубрика Quality Scoring
 
-Используется в `/kirpr:tasks-review` для оценки каждой подзадачи. 5 критериев, 0-2 балла каждый = max 10.
+Используется в `$kirpr-tasks-review` в Codex или `/kirpr:tasks-review` в Claude Code для оценки каждой подзадачи. 5 критериев, 0-2 балла каждый = max 10.
 
 **Порог качества: 8/10.** Файлы с score < 8 требуют итерации.
 
