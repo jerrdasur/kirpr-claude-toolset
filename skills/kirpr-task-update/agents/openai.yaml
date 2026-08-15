@@ -1,0 +1,6 @@
+interface:
+  display_name: "kirpr task update"
+  short_description: "Update one issue in the configured tracker"
+  default_prompt: "Use $kirpr-task-update with the arguments I provide."
+policy:
+  allow_implicit_invocation: false

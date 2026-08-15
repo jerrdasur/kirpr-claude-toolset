@@ -1,0 +1,6 @@
+interface:
+  display_name: "kirpr task delete"
+  short_description: "Permanently delete one issue from the configured tracker"
+  default_prompt: "Use $kirpr-task-delete with the arguments I provide."
+policy:
+  allow_implicit_invocation: false
