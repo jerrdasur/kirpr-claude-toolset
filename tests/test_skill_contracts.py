@@ -4,6 +4,14 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 
+ALL_SKILLS = (
+    "kirpr-task-fetch", "kirpr-task-create", "kirpr-task-update",
+    "kirpr-task-delete", "kirpr-tasks-decompose", "kirpr-tasks-review",
+    "kirpr-tasks-adapt", "kirpr-tasks-push", "kirpr-adr-init",
+    "kirpr-adr-write", "kirpr-adr-review", "kirpr-text",
+    "expert-panel", "grill-me", "kirpr-flow",
+)
+
 
 def read_frontmatter(path):
     text = path.read_text(encoding="utf-8")
@@ -62,6 +70,25 @@ class TestDecompositionSkills(unittest.TestCase):
         ("tasks-review", "kirpr-tasks-review"),
         ("tasks-adapt", "kirpr-tasks-adapt"),
         ("tasks-push", "kirpr-tasks-push"),
+    )
+
+    def test_explicit_skills_exist(self):
+        for _, skill in self.CASES:
+            with self.subTest(skill=skill):
+                assert_explicit_skill(self, skill)
+
+    def test_claude_commands_are_thin_adapters(self):
+        for command, skill in self.CASES:
+            with self.subTest(command=command):
+                assert_claude_adapter(self, command, skill)
+
+
+class TestAdrAndTextSkills(unittest.TestCase):
+    CASES = (
+        ("adr-init", "kirpr-adr-init"),
+        ("adr-write", "kirpr-adr-write"),
+        ("adr-review", "kirpr-adr-review"),
+        ("text", "kirpr-text"),
     )
 
     def test_explicit_skills_exist(self):
