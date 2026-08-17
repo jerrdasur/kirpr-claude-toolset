@@ -11,10 +11,14 @@ ROOT = Path(__file__).resolve().parents[1]
 ALL_SKILLS = (
     "kirpr-task-fetch", "kirpr-task-create", "kirpr-task-update",
     "kirpr-task-delete", "kirpr-tasks-decompose", "kirpr-tasks-review",
-    "kirpr-tasks-adapt", "kirpr-tasks-push", "kirpr-adr-init",
-    "kirpr-adr-write", "kirpr-adr-review", "kirpr-text",
-    "expert-panel", "grill-me", "kirpr-flow",
+    "kirpr-tasks-adapt", "kirpr-tasks-push", "kirpr-text",
+    "expert-panel", "grill-me",
 )
+RETIRED_SKILLS = (
+    "kirpr-adr", "kirpr-adr-init", "kirpr-adr-write", "kirpr-adr-review",
+    "kirpr-flow",
+)
+RETIRED_COMMANDS = ("adr-init", "adr-review", "adr-write")
 
 
 class InstallerCase(unittest.TestCase):
@@ -87,7 +91,7 @@ class TestCleanInstall(InstallerCase):
     def test_claude_target(self):
         self.run_script("install.sh", "--target", "claude")
         self.assert_skills(self.root / ".claude" / "skills")
-        self.assertEqual(len(list((self.root / ".claude" / "commands" / "kirpr").glob("*.md"))), 12)
+        self.assertEqual(len(list((self.root / ".claude" / "commands" / "kirpr").glob("*.md"))), 9)
         self.assertFalse((self.root / ".agents" / "skills").exists())
         records = self.manifest_records()
         self.assertIn(("target", "claude"), records)
@@ -193,6 +197,63 @@ class TestMigrationAndUninstall(InstallerCase):
         backups = list((self.root / ".config/kirpr/backups").rglob("old"))
         self.assertEqual(len(backups), 1)
         self.assertFalse((self.root / ".agents/skills/kirpr-adr").exists())
+
+    def test_retires_removed_skills_and_adapters_on_both_targets(self):
+        for skill in RETIRED_SKILLS:
+            self.seed(f".agents/skills/{skill}/SKILL.md", "stale\n")
+            self.seed(f".claude/skills/{skill}/SKILL.md", "stale\n")
+        for command in RETIRED_COMMANDS:
+            self.seed(f".claude/commands/kirpr/{command}.md", "stale\n")
+
+        self.run_script("install.sh", "--target", "all")
+
+        for skill in RETIRED_SKILLS:
+            self.assertFalse((self.root / ".agents/skills" / skill).exists(), skill)
+            self.assertFalse((self.root / ".claude/skills" / skill).exists(), skill)
+        for command in RETIRED_COMMANDS:
+            self.assertFalse(
+                (self.root / ".claude/commands/kirpr" / f"{command}.md").exists(), command
+            )
+        backups = list((self.root / ".config/kirpr/backups").rglob("SKILL.md"))
+        self.assertEqual(len(backups), 2 * len(RETIRED_SKILLS))
+        manifest = (self.root / ".config/kirpr/install-manifest").read_text(
+            encoding="utf-8"
+        )
+        for skill in RETIRED_SKILLS:
+            self.assertNotIn(f"path\tcodex\t{self.root}/.agents/skills/{skill}\n", manifest)
+            self.assertNotIn(f"path\tclaude\t{self.root}/.claude/skills/{skill}\n", manifest)
+
+    def test_upgrade_accepts_manifest_that_lists_retired_paths(self):
+        self.seed(".agents/skills/kirpr-flow/SKILL.md", "stale\n")
+        self.seed(
+            ".config/kirpr/install-manifest",
+            "version\t1\ntarget\tcodex\n"
+            f"path\tcodex\t{self.root / '.agents/skills'}\n"
+            f"path\tcodex\t{self.root / '.agents/skills/kirpr-flow'}\n"
+            f"path\tcodex\t{self.root / '.agents/skills/kirpr-adr-init'}\n"
+            f"path\tshared\t{self.root / '.local/share/kirpr'}\n",
+        )
+
+        result = self.run_script("install.sh", "--target", "codex", check=False)
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertNotIn("Invalid install manifest", result.stderr)
+        self.assertFalse((self.root / ".agents/skills/kirpr-flow").exists())
+        self.assertTrue((self.root / ".agents/skills/kirpr-text/SKILL.md").is_file())
+
+    def test_uninstall_removes_retired_paths_recorded_by_older_manifest(self):
+        self.run_script("install.sh", "--target", "codex")
+        stale = self.seed(".agents/skills/kirpr-flow/SKILL.md", "stale\n")
+        manifest = self.root / ".config/kirpr/install-manifest"
+        manifest.write_text(
+            manifest.read_text(encoding="utf-8")
+            + f"path\tcodex\t{self.root / '.agents/skills/kirpr-flow'}\n",
+            encoding="utf-8",
+        )
+
+        self.run_script("uninstall.sh", "--target", "codex")
+
+        self.assertFalse(stale.parent.exists())
 
     def test_reinstall_preserves_user_files(self):
         self.run_script("install.sh", "--target", "all")
@@ -304,7 +365,7 @@ class TestMigrationAndUninstall(InstallerCase):
             "install.sh", "--target", "codex", check=False,
             extra_env={
                 "KIRPR_INTERNAL_TEST_MODE": "1",
-                "KIRPR_TEST_FAIL_AFTER_SKILL": "kirpr-flow",
+                "KIRPR_TEST_FAIL_AFTER_SKILL": "grill-me",
             },
         )
         self.assertNotEqual(result.returncode, 0)
@@ -313,10 +374,10 @@ class TestMigrationAndUninstall(InstallerCase):
     def test_test_failure_switch_is_inert_without_internal_gate(self):
         result = self.run_script(
             "install.sh", "--target", "codex", check=False,
-            extra_env={"KIRPR_TEST_FAIL_AFTER_SKILL": "kirpr-flow"},
+            extra_env={"KIRPR_TEST_FAIL_AFTER_SKILL": "grill-me"},
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertTrue((self.root / ".agents/skills/kirpr-flow/SKILL.md").is_file())
+        self.assertTrue((self.root / ".agents/skills/grill-me/SKILL.md").is_file())
 
     def move_config_behind_symlink(self):
         outside_temp = tempfile.TemporaryDirectory()

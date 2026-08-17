@@ -1,9 +1,8 @@
 # kirpr — skills and commands for Claude Code and Codex
 
-kirpr helps turn tracker tasks into plans, ADRs, edited text, expert reviews,
-product-hypothesis interviews, and a git-free development workflow. The same
-skills work in both Claude Code and Codex; Claude also has compatible
-`/kirpr:*` command adapters.
+kirpr helps turn tracker tasks into decompositions, edited text, expert
+reviews, and product-hypothesis interviews. The same skills work in both
+Claude Code and Codex; Claude also has compatible `/kirpr:*` command adapters.
 
 ## Invocations
 
@@ -29,14 +28,6 @@ entering the issue number.
 | Review decomposition | `/kirpr:tasks-review SAS-200` | `$kirpr-tasks-review SAS-200` |
 | Adapt decomposition | `/kirpr:tasks-adapt SAS-200` | `$kirpr-tasks-adapt SAS-200` |
 | Push subtasks | `/kirpr:tasks-push SAS-200` | `$kirpr-tasks-push SAS-200` |
-
-### Architecture Decision Records
-
-| What | Claude Code | Codex |
-|------|-------------|-------|
-| Initialize ADR support | `/kirpr:adr-init` | `$kirpr-adr-init` |
-| Write an ADR | `/kirpr:adr-write SAS-200` | `$kirpr-adr-write SAS-200` |
-| Review an ADR | `/kirpr:adr-review SAS-200` | `$kirpr-adr-review SAS-200` |
 
 ### Text editing
 
@@ -64,19 +55,6 @@ Stonebraker. Customize it in `~/.config/kirpr/custom-experts.md`.
 | Start an interview | `/grill-me billing for small teams` | `$grill-me billing for small teams` |
 | Continue from a document | `/grill-me docs/hypotheses/billing.md` | `$grill-me docs/hypotheses/billing.md` |
 | Resume a saved session | `/grill-me docs/grill-me/2026-08-12-billing/` | `$grill-me docs/grill-me/2026-08-12-billing/` |
-
-### Development workflow
-
-| What | Claude Code | Codex |
-|------|-------------|-------|
-| Brainstorm a spec | `/kirpr-flow brainstorm topic` | `$kirpr-flow brainstorm topic` |
-| Plan a spec | `/kirpr-flow plan docs/spec.md` | `$kirpr-flow plan docs/spec.md` |
-| Execute a plan | `/kirpr-flow execute docs/plan/` | `$kirpr-flow execute docs/plan/` |
-| Execute inline | `/kirpr-flow execute --inline docs/plan/` | `$kirpr-flow execute --inline docs/plan/` |
-| Request a review | `/kirpr-flow review docs/plan/` | `$kirpr-flow review docs/plan/` |
-| Debug a symptom | `/kirpr-flow debug symptom` | `$kirpr-flow debug symptom` |
-| Finish with a summary | `/kirpr-flow finish` | `$kirpr-flow finish` |
-| Create or edit a skill | `/kirpr-flow skill name` | `$kirpr-flow skill name` |
 
 ## Installation
 
@@ -122,7 +100,10 @@ On the first install, tracker configuration and custom experts are migrated
 from recognized legacy user locations into the shared configuration. If two
 different user-owned versions conflict, installation stops before replacing
 skills. Existing same-name skills are saved under `~/.config/kirpr/backups/`
-before replacement, and a failed install rolls back its own changes. Tracker
+before replacement, and a failed install rolls back its own changes. Skills
+dropped from the bundle — `kirpr-flow` and the `kirpr-adr-*` family — are
+removed from both platforms on the next install, with the same backup and
+rollback treatment. Tracker
 and API tokens are never stored or printed by the installer: keep them in
 environment variables such as `YOUTRACK_TOKEN`, `JIRA_TOKEN`, and `JIRA_EMAIL`.
 

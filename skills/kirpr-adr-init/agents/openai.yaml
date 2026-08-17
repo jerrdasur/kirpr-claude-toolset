@@ -1,6 +1,0 @@
-interface:
-  display_name: "kirpr adr init"
-  short_description: "Initialize or update ADR infrastructure"
-  default_prompt: "Use $kirpr-adr-init with the arguments I provide."
-policy:
-  allow_implicit_invocation: false

@@ -6,22 +6,26 @@
 KIRPR_SKILLS=(
     kirpr-task-fetch kirpr-task-create kirpr-task-update kirpr-task-delete
     kirpr-tasks-decompose kirpr-tasks-review kirpr-tasks-adapt kirpr-tasks-push
-    kirpr-adr-init kirpr-adr-write kirpr-adr-review kirpr-text
-    expert-panel grill-me kirpr-flow
+    kirpr-text expert-panel grill-me
 )
 KIRPR_COMMANDS=(
-    adr-init adr-review adr-write task-create task-delete task-fetch task-update
+    task-create task-delete task-fetch task-update
     tasks-adapt tasks-decompose tasks-push tasks-review text
 )
+# Skills and adapters dropped from the bundle. Installs remove any copy left
+# behind by an earlier version, so retired content never keeps loading.
+KIRPR_RETIRED_SKILLS=(
+    kirpr-adr kirpr-adr-init kirpr-adr-write kirpr-adr-review kirpr-flow
+)
+KIRPR_RETIRED_COMMANDS=(adr-init adr-review adr-write)
 KIRPR_CONFIG_FILES=(
-    adr-review-rubric.md adr-templates.md agent-rules.md
     custom-experts.md.template style-examples.md tracker-runtime.md
     tracker.md.template workflow.md templates.md
 )
 KIRPR_PROMPTS=(text.md)
 KIRPR_SCRIPTS=(
     create_youtrack.py fetch_jira.py fetch_youtrack.py manage_jira.py
-    manage_youtrack.py validate_services.py
+    manage_youtrack.py
 )
 
 KIRPR_TARGET="${KIRPR_TARGET:-}"
@@ -439,26 +443,27 @@ validate_destination_layout() {
     case "$KIRPR_TARGET" in
         codex|all)
             require_safe_destination "$KIRPR_CODEX_SKILLS_DIR" || return $?
-            for skill in "${KIRPR_SKILLS[@]}"; do
+            for skill in "${KIRPR_SKILLS[@]}" "${KIRPR_RETIRED_SKILLS[@]}"; do
                 require_safe_destination "$KIRPR_CODEX_SKILLS_DIR/$skill" || return $?
             done
-            require_safe_destination "$KIRPR_CODEX_SKILLS_DIR/kirpr-adr" || return $?
             ;;
     esac
     case "$KIRPR_TARGET" in
         claude|all)
             require_safe_destination "$KIRPR_CLAUDE_SKILLS_DIR" || return $?
             require_safe_destination "$KIRPR_CLAUDE_COMMANDS_DIR" || return $?
-            for skill in "${KIRPR_SKILLS[@]}"; do
+            for skill in "${KIRPR_SKILLS[@]}" "${KIRPR_RETIRED_SKILLS[@]}"; do
                 require_safe_destination "$KIRPR_CLAUDE_SKILLS_DIR/$skill" || return $?
             done
-            for command in "${KIRPR_COMMANDS[@]}"; do
+            for command in "${KIRPR_COMMANDS[@]}" "${KIRPR_RETIRED_COMMANDS[@]}"; do
                 require_safe_destination "$KIRPR_CLAUDE_COMMANDS_DIR/$command.md" || return $?
             done
             ;;
     esac
 }
 
+# Retired entries stay valid here: a manifest written by an earlier version
+# still records them, and rejecting it would fail the upgrade before it starts.
 valid_managed_path() {
     local target path skill command
 
@@ -468,17 +473,17 @@ valid_managed_path() {
         shared) [ "$path" = "$KIRPR_RUNTIME_DIR" ] && return 0 ;;
         codex)
             [ "$path" = "$KIRPR_CODEX_SKILLS_DIR" ] && return 0
-            for skill in "${KIRPR_SKILLS[@]}"; do
+            for skill in "${KIRPR_SKILLS[@]}" "${KIRPR_RETIRED_SKILLS[@]}"; do
                 [ "$path" = "$KIRPR_CODEX_SKILLS_DIR/$skill" ] && return 0
             done
             ;;
         claude)
             [ "$path" = "$KIRPR_CLAUDE_SKILLS_DIR" ] && return 0
             [ "$path" = "$KIRPR_CLAUDE_COMMANDS_DIR" ] && return 0
-            for skill in "${KIRPR_SKILLS[@]}"; do
+            for skill in "${KIRPR_SKILLS[@]}" "${KIRPR_RETIRED_SKILLS[@]}"; do
                 [ "$path" = "$KIRPR_CLAUDE_SKILLS_DIR/$skill" ] && return 0
             done
-            for command in "${KIRPR_COMMANDS[@]}"; do
+            for command in "${KIRPR_COMMANDS[@]}" "${KIRPR_RETIRED_COMMANDS[@]}"; do
                 [ "$path" = "$KIRPR_CLAUDE_COMMANDS_DIR/$command.md" ] && return 0
             done
             ;;
@@ -494,22 +499,21 @@ valid_backup_original() {
     case "$target" in
         shared) [ "$original" = "$KIRPR_RUNTIME_DIR" ] && return 0 ;;
         codex)
-            for skill in "${KIRPR_SKILLS[@]}"; do
+            for skill in "${KIRPR_SKILLS[@]}" "${KIRPR_RETIRED_SKILLS[@]}"; do
                 [ "$original" = "$KIRPR_CODEX_SKILLS_DIR/$skill" ] && return 0
             done
             ;;
         claude)
-            for skill in "${KIRPR_SKILLS[@]}"; do
+            for skill in "${KIRPR_SKILLS[@]}" "${KIRPR_RETIRED_SKILLS[@]}"; do
                 [ "$original" = "$KIRPR_CLAUDE_SKILLS_DIR/$skill" ] && return 0
             done
-            for command in "${KIRPR_COMMANDS[@]}"; do
+            for command in "${KIRPR_COMMANDS[@]}" "${KIRPR_RETIRED_COMMANDS[@]}"; do
                 [ "$original" = "$KIRPR_CLAUDE_COMMANDS_DIR/$command.md" ] && return 0
             done
             ;;
     esac
     case "$target:$original" in
-        "shared:$KIRPR_CONFIG_DIR/custom-experts.md"|"shared:$KIRPR_CONFIG_DIR/tracker.md"|\
-        "codex:$KIRPR_CODEX_SKILLS_DIR/kirpr-adr")
+        "shared:$KIRPR_CONFIG_DIR/custom-experts.md"|"shared:$KIRPR_CONFIG_DIR/tracker.md")
             return 0
             ;;
     esac
@@ -647,15 +651,34 @@ install_user_config() {
     done
 }
 
-retire_codex_adr() {
-    local destination
-    destination="$KIRPR_CODEX_SKILLS_DIR/kirpr-adr"
+retire_path() {
+    local target destination
+    target="$1"; destination="$2"
     [ -e "$destination" ] || [ -L "$destination" ] || return 0
     record_rollback "$destination" || return $?
-    backup_displaced codex "$destination" 1 || return $?
+    backup_displaced "$target" "$destination" 1 || return $?
     # shellcheck disable=SC2034 # Read by install.sh's EXIT trap.
     KIRPR_MUTATION_STARTED=1
     rm -rf "$destination"
+}
+
+retire_removed() {
+    local skill command
+    case "$KIRPR_TARGET" in
+        codex|all)
+            for skill in "${KIRPR_RETIRED_SKILLS[@]}"; do
+                retire_path codex "$KIRPR_CODEX_SKILLS_DIR/$skill" || return $?
+            done ;;
+    esac
+    case "$KIRPR_TARGET" in
+        claude|all)
+            for skill in "${KIRPR_RETIRED_SKILLS[@]}"; do
+                retire_path claude "$KIRPR_CLAUDE_SKILLS_DIR/$skill" || return $?
+            done
+            for command in "${KIRPR_RETIRED_COMMANDS[@]}"; do
+                retire_path claude "$KIRPR_CLAUDE_COMMANDS_DIR/$command.md" || return $?
+            done ;;
+    esac
 }
 
 rollback_install() {
@@ -679,8 +702,7 @@ install_staged_bundle() {
         codex|all)
             for skill in "${KIRPR_SKILLS[@]}"; do
                 replace_managed_path codex "$KIRPR_STAGE_DIR/skills/$skill" "$KIRPR_CODEX_SKILLS_DIR/$skill" || return $?
-            done
-            retire_codex_adr || return $? ;;
+            done ;;
     esac
     case "$KIRPR_TARGET" in
         claude|all)
@@ -691,6 +713,7 @@ install_staged_bundle() {
                 replace_managed_path claude "$KIRPR_STAGE_DIR/commands/kirpr/$command.md" "$KIRPR_CLAUDE_COMMANDS_DIR/$command.md" || return $?
             done ;;
     esac
+    retire_removed || return $?
     replace_managed_path shared "$KIRPR_STAGE_DIR/runtime" "$KIRPR_RUNTIME_DIR" || return $?
 }
 

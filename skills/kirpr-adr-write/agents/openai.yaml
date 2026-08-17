@@ -1,6 +1,0 @@
-interface:
-  display_name: "kirpr adr write"
-  short_description: "Research, draft, review, and write an ADR"
-  default_prompt: "Use $kirpr-adr-write with the arguments I provide."
-policy:
-  allow_implicit_invocation: false

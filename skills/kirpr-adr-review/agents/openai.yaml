@@ -1,6 +1,0 @@
-interface:
-  display_name: "kirpr adr review"
-  short_description: "Review an ADR against tracker and codebase context"
-  default_prompt: "Use $kirpr-adr-review with the arguments I provide."
-policy:
-  allow_implicit_invocation: false
