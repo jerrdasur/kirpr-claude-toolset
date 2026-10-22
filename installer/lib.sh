@@ -163,11 +163,11 @@ validate_bundle() {
             return 1
         fi
         expected="$(printf '%s\n' \
-            '# Совместимый вызов kirpr' \
+            '# kirpr compatibility entry point' \
             '' \
-            "Полностью прочитай \`~/.claude/skills/kirpr-$command/SKILL.md\` и следуй ему." \
+            "Read \`~/.claude/skills/kirpr-$command/SKILL.md\` in full and follow it." \
             '' \
-            'Аргументы явного вызова:' \
+            'Explicit invocation arguments:' \
             '' \
             '```text' \
             "\$ARGUMENTS" \

@@ -1,8 +1,8 @@
-# Совместимый вызов kirpr
+# kirpr compatibility entry point
 
-Полностью прочитай `~/.claude/skills/kirpr-text/SKILL.md` и следуй ему.
+Read `~/.claude/skills/kirpr-text/SKILL.md` in full and follow it.
 
-Аргументы явного вызова:
+Explicit invocation arguments:
 
 ```text
 $ARGUMENTS

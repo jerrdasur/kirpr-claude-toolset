@@ -3,76 +3,78 @@ name: kirpr-tasks-push
 description: "Use only when explicitly invoked to create tracker tasks from a completed decomposition."
 ---
 
-# Создание задач в трекере
+# Creating tasks in the tracker
 
-Ты — помощник, который берёт готовую декомпозицию задачи и создаёт задачи в YouTrack под родительской, проставляя иерархию и зависимости, и публикует решение в родительскую задачу.
+Everything addressed to the user and everything written to files is in Russian.
 
-## Инициализация
+You are an assistant that takes a finished task decomposition, creates the tasks in YouTrack under the parent issue with hierarchy and dependencies, and publishes the solution to the parent issue.
 
-1. Прочитай `~/.local/share/kirpr/config/tracker-runtime.md` и строго выполни его инструкцию выбора runtime для операции push. Она читает `~/.config/kirpr/tracker.md` и определяет активный трекер и скрипт.
-   - Если активный трекер **не YouTrack** — сообщи пользователю: «Команда `tasks-push` поддерживает только YouTrack» и остановись.
-2. Номер задачи: аргументы явного вызова (например `SAS-200`). Директория декомпозиции — lowercase номер (`sas-200/`).
-3. Если директории `sas-200/` нет — сообщи, что декомпозиция не найдена: «Запустите `$kirpr-tasks-decompose` в Codex или `/kirpr:tasks-decompose` в Claude Code», и остановись.
-4. Если в директории нет `SOLUTION.md` — это декомпозиция старого формата. Сообщи об этом и предложи заново запустить `$kirpr-tasks-decompose` в Codex или `/kirpr:tasks-decompose` в Claude Code; задачи не создавай.
+## Initialization
 
-## Фаза 1: Загрузка декомпозиции
+1. Read `~/.local/share/kirpr/config/tracker-runtime.md` and follow its runtime-selection instruction for the push operation exactly. It reads `~/.config/kirpr/tracker.md` and determines the active tracker and script.
+   - If the active tracker is **not YouTrack** — tell the user: «Команда `tasks-push` поддерживает только YouTrack» and stop.
+2. Task number: explicit invocation arguments (e.g. `SAS-200`). The decomposition directory is the lowercase number (`sas-200/`).
+3. If the `sas-200/` directory does not exist — report that the decomposition was not found: «Запустите `$kirpr-tasks-decompose` в Codex или `/kirpr:tasks-decompose` в Claude Code», and stop.
+4. If the directory has no `SOLUTION.md` — this is an old-format decomposition. Say so and suggest re-running `$kirpr-tasks-decompose` in Codex or `/kirpr:tasks-decompose` in Claude Code; do not create tasks.
 
-1. Прочитай `sas-200/00-overview.md` — таблицу задач и зависимости.
-2. Прочитай все `sas-200/NN-service.md` — задачи.
-3. Из заголовка первого уровня каждого файла (`# {сервис}: {Название}`) возьми текст без `# ` → `summary`.
-   Тело файла без заголовка плюс последняя строка `Решение: см. {parent}` → `description`, где `{parent}` — номер родительской задачи из аргументов.
+## Phase 1: Load the decomposition
 
-## Фаза 2: Построение плана
+1. Read `sas-200/00-overview.md` — the task table and dependencies.
+2. Read all `sas-200/NN-service.md` — the tasks.
+3. From the first-level heading of each file (`# {сервис}: {Название}`) take the text without `# ` → `summary`.
+   The file body without the heading plus a last line `Решение: см. {parent}` → `description`, where `{parent}` is the parent issue number from the arguments.
 
-Собери `sas-200/create-plan.json`:
+## Phase 2: Build the plan
+
+Assemble `sas-200/create-plan.json`:
 
 - `tracker`: `"youtrack"`
-- `parent`: номер задачи из аргументов явного вызова
-- `tasks[]`: по одному объекту на файл задачи —
-  - `key`: имя файла без расширения (например `01-scansrv`),
-  - `summary`: название из заголовка,
-  - `description`: из Фазы 1, п. 3 (тело без заголовка плюс строка «Решение: см. {parent}»).
-- `edges[]`: зависимости из секции «Зависимости» в `00-overview.md`. Ребро `{"from": A, "to": B}` означает «A должна быть сделана раньше B».
+- `parent`: the task number from the explicit invocation arguments
+- `tasks[]`: one object per task file —
+  - `key`: file name without extension (e.g. `01-scansrv`),
+  - `summary`: the title from the heading,
+  - `description`: from Phase 1, item 3 (body without heading plus the line «Решение: см. {parent}»).
+- `edges[]`: dependencies from the «Зависимости» section of `00-overview.md`. An edge `{"from": A, "to": B}` means «A must be done before B».
 
-Убедись, что `create-plan.json` и `.created.json` внесены в `.gitignore` проекта (это кэш-артефакты, как `.context.md`). Если нет — добавь их.
+Make sure `create-plan.json` and `.created.json` are in the project's `.gitignore` (they are cache artifacts, like `.context.md`). If not — add them.
 
-## Фаза 3: Preview (dry-run)
+## Phase 3: Preview (dry-run)
 
-Запусти:
+Run:
 
 ```
 python3 ~/.local/share/kirpr/scripts/create_youtrack.py --plan sas-200/create-plan.json --solution-file sas-200/SOLUTION.md --dry-run
 ```
 
-Покажи пользователю вывод: таблицу создаваемых задач, связи иерархии и зависимостей, шаг публикации решения комментарием к родительской задаче. **Явно покажи зависимости**, чтобы пользователь их сверил.
+Show the user the output: the table of tasks to be created, hierarchy and dependency links, the step that publishes the solution as a comment on the parent issue. **Show the dependencies explicitly** so the user can check them.
 
-## Фаза 4: Подтверждение
+## Phase 4: Confirmation
 
-Проект YouTrack — это префикс номера задачи (`SAS-200` → проект `SAS`). Возьми его из аргументов явного вызова, чтобы гейт был точным (dry-run сеть не запрашивает).
+The YouTrack project is the prefix of the task number (`SAS-200` → project `SAS`). Take it from the explicit invocation arguments so the gate is precise (dry-run makes no network calls).
 
-Спроси: «Создаю N задач в проекте {PROJECT} с иерархией и зависимостями и публикую решение комментарием к {parent}?», подставив N из dry-run и {PROJECT} из префикса. Предложи варианты: `да` / `нет`.
+Ask: «Создаю N задач в проекте {PROJECT} с иерархией и зависимостями и публикую решение комментарием к {parent}?», substituting N from the dry-run and {PROJECT} from the prefix. Offer the options: `да` / `нет`.
 
-**Без явного согласия задачи не создавай.** Создание задач в трекере необратимо.
+**Do not create tasks without explicit consent.** Creating tasks in the tracker is irreversible.
 
-## Фаза 5: Создание
+## Phase 5: Creation
 
-После подтверждения запусти без `--dry-run`:
+After confirmation, run without `--dry-run`:
 
 ```
 python3 ~/.local/share/kirpr/scripts/create_youtrack.py --plan sas-200/create-plan.json --solution-file sas-200/SOLUTION.md
 ```
 
-- Если скрипт вернул ошибку — покажи её и остановись. Файл `.created.json` уже частично записан; повторный запуск досоздаст недостающее и не создаст дублей.
+- If the script returned an error — show it and stop. `.created.json` is already partially written; a re-run creates what is missing and makes no duplicates.
 
-## Фаза 6: Отчёт
+## Phase 6: Report
 
-Покажи вывод скрипта: таблицу `key → созданный issue`, проставленные связи, строку о публикации решения, итог. Сообщи, что маппинг сохранён в `sas-200/.created.json` и повторный вызов команды идемпотентен.
+Show the script output: the `key → созданный issue` table, the links set, the line about the solution publication, the totals. Tell the user that the mapping is saved in `sas-200/.created.json` and that re-running the command is idempotent.
 
-Решение публикуется один раз: при повторном вызове скрипт сообщит «уже было опубликовано». После `$kirpr-tasks-adapt` в Codex или `/kirpr:tasks-adapt` в Claude Code обновляй родительскую задачу через `$kirpr-task-update` в Codex или `/kirpr:task-update` в Claude Code с `--comment`.
+The solution is published once: on a re-run the script reports «уже было опубликовано». After `$kirpr-tasks-adapt` in Codex or `/kirpr:tasks-adapt` in Claude Code, update the parent issue via `$kirpr-task-update` in Codex or `/kirpr:task-update` in Claude Code with `--comment`.
 
-## Правила
+## Rules
 
-- **Один вопрос за раз.** Не задавай несколько вопросов в одном сообщении.
-- **Не создавай задачи без подтверждения пользователя.**
-- **Покажи план (dry-run) перед реальным созданием.**
-- **Если fetch/резолв проекта упал — прерви** и сообщи пользователю.
+- **One question at a time.** Do not ask several questions in one message.
+- **Do not create tasks without the user's confirmation.**
+- **Show the plan (dry-run) before the real creation.**
+- **If fetch / project resolution failed — stop** and tell the user.

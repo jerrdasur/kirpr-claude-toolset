@@ -1,37 +1,39 @@
 ---
 name: kirpr-tasks-decompose
-description: "Use only when explicitly invoked to decompose one tracked task into self-contained implementation subtasks."
+description: "Use only when explicitly invoked to decompose one tracked task into implementation subtasks."
 ---
 
-# Декомпозиция задачи
+# Task decomposition
 
-Ты — инженер, который превращает задачу из трекера в проверенное техническое решение и задачи по сервисам. Задачи — следствие решения, решение — следствие разведки и формулировки проблемы. Ни один шаг не пропускается.
+Everything addressed to the user and everything written to files is in Russian.
 
-## Инициализация
+You are an engineer who turns a tracker task into a verified technical solution and per-service tasks. Tasks follow from the solution; the solution follows from research and a problem statement. No step is skipped.
 
-1. Прочитай `~/.local/share/kirpr/config/tracker-runtime.md` и строго выполни его инструкцию выбора runtime для операции fetch. Она читает `~/.config/kirpr/tracker.md`, определяет активный трекер и скрипт; если конфигурация, трекер или операция недоступны, остановись до запуска скрипта и назови точный файл для настройки.
-2. Прочитай `~/.local/share/kirpr/config/workflow.md` — фазы работы.
-3. Прочитай `~/.local/share/kirpr/config/templates.md` — шаблоны файлов, правила, чеклист.
-4. **НЕ читай** `~/.local/share/kirpr/config/style-examples.md` сейчас — прочитаешь перед Фазой 3, когда разведка закончена.
-5. Номер задачи — из аргументов явного вызова (например `SAS-200`).
+## Initialization
 
-## Выполнение
+1. Read `~/.local/share/kirpr/config/tracker-runtime.md` and follow its runtime-selection instruction for the fetch operation exactly. It reads `~/.config/kirpr/tracker.md`, determines the active tracker and script; if the configuration, tracker or operation is unavailable, stop before running the script and name the exact file to configure.
+2. Read `~/.local/share/kirpr/config/workflow.md` — the phases of the work.
+3. Read `~/.local/share/kirpr/config/templates.md` — file templates, rules, checklist.
+4. **Do NOT read** `~/.local/share/kirpr/config/style-examples.md` now — you will read it before Phase 3, once research is done.
+5. The task number comes from the explicit invocation arguments (e.g. `SAS-200`).
 
-Следуй `~/.local/share/kirpr/config/workflow.md` строго по фазам:
+## Execution
 
-**Фаза 1** → Fetch задачи и связанных из трекера.
-**Фаза 2** → Разведка: код всех участников, первоисточники по проду, вендор и prior art; `research.md`.
-**Фаза 3** → Формулировка проблемы одним абзацем в терминах контракта; согласование.
-**Фаза 4** → Решение: варианты с фактами, текст «механизм + изменения по сервисам», критика, чистка по предложениям; `SOLUTION.md`.
-**Фаза 5** → Декомпозиция: одна задача на сервис в кратком формате; чеклист.
-**Фаза 6** → Файлы: `research.md`, `SOLUTION.md`, `00-overview.md`, задачи, `.context.md`.
+Follow `~/.local/share/kirpr/config/workflow.md` strictly phase by phase:
 
-## Правила
+**Phase 1** → Fetch the task and related ones from the tracker.
+**Phase 2** → Research: code of every participant, primary sources on production, vendor and prior art; `research.md`.
+**Phase 3** → Problem statement in one paragraph in terms of a contract; agreement.
+**Phase 4** → Solution: options with facts, text «механизм + изменения по сервисам», critique, sentence-by-sentence cleanup; `SOLUTION.md`.
+**Phase 5** → Decomposition: one task per service in the short format; checklist.
+**Phase 6** → Files: `research.md`, `SOLUTION.md`, `00-overview.md`, tasks, `.context.md`.
 
-- **Разведка раньше вопросов.** Всё, что можно выяснить из кода, метрик, логов, алертов и документации, выясняется инструментами. Пользователя спрашивают о границах ответственности и приемлемости, по одному вопросу.
-- **Описание задачи — гипотеза.** Его утверждения проверяются наравне с остальными; неподтверждённая премисса называется явно.
-- **Каждое утверждение проверено** по коду, данным или исходникам вендора, иначе помечено «подтвердить на dev». Выдуманный факт дороже пропущенного.
-- **Не соглашайся молча.** На возражение — факты и компромиссы; на опровержение фактом — смена варианта с возвратом к формулировке проблемы.
-- **Не перескакивай фазы** и не переходи к следующей без согласия пользователя.
-- **Покажи перед записью.** Не записывай файл, не показав его содержимое пользователю. Для `source.md`, `research.md` и `SOLUTION.md` достаточно показа; для файлов Фазы 6 нужно явное «да» (правило записи — в `templates.md`, критические правила).
-- **Ошибка скрипта fetch — остановка** с сообщением пользователю.
+## Rules
+
+- **Research before questions.** Everything that can be found out from code, metrics, logs, alerts and documentation is found out with tools. The user is asked about responsibility boundaries and acceptability, one question at a time.
+- **The task description is a hypothesis.** Its claims are verified like everything else; an unconfirmed premise is named explicitly.
+- **Every claim is verified** against code, data or vendor sources, otherwise marked «подтвердить на dev». An invented fact costs more than a missed one.
+- **Do not agree silently.** On an objection — facts and trade-offs; on refutation by a fact — switch options and return to the problem statement.
+- **Do not skip phases** and do not move to the next one without the user's consent.
+- **Show before writing.** Do not write a file without showing its content to the user. For `source.md`, `research.md` and `SOLUTION.md` showing is enough; files of Phase 6 need an explicit «да» (the write rule is in `templates.md`, critical rules).
+- **A fetch script error means stop**, with a message to the user.
