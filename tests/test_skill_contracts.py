@@ -121,7 +121,7 @@ class TestTrackerCrudSkills(unittest.TestCase):
         create_skill = (ROOT / "skills" / "kirpr-task-create" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("`URL:`", runtime)
-        self.assertIn("запомни его как базовый URL", runtime)
+        self.assertIn("remember it as the base URL", runtime)
         self.assertIn("базовый URL был определён при выполнении runtime-инструкции", create_skill)
 
     def test_create_skill_cross_workflow_reference_shows_both_invocation_forms(self):
