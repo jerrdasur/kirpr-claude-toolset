@@ -24,3 +24,8 @@ class TestReadme(unittest.TestCase):
     def test_runtime_is_documented_as_installer_managed(self):
         self.assertIn("installer-managed runtime", self.text)
         self.assertNotIn("read-only runtime", self.text)
+
+    def test_documents_project_memory(self):
+        for value in ("/kirpr:onboard", "$kirpr-onboard", ".kirpr/workspace.md", ".kirpr/memory.md", "kirpr_memory.py"):
+            with self.subTest(value=value):
+                self.assertIn(value, self.text)

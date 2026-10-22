@@ -6,11 +6,11 @@
 KIRPR_SKILLS=(
     kirpr-task-fetch kirpr-task-create kirpr-task-update kirpr-task-delete
     kirpr-tasks-decompose kirpr-tasks-review kirpr-tasks-adapt kirpr-tasks-push
-    kirpr-text expert-panel grill-me
+    kirpr-text expert-panel grill-me kirpr-onboard
 )
 KIRPR_COMMANDS=(
     task-create task-delete task-fetch task-update
-    tasks-adapt tasks-decompose tasks-push tasks-review text
+    tasks-adapt tasks-decompose tasks-push tasks-review text onboard
 )
 # Skills and adapters dropped from the bundle. Installs remove any copy left
 # behind by an earlier version, so retired content never keeps loading.
@@ -20,12 +20,13 @@ KIRPR_RETIRED_SKILLS=(
 KIRPR_RETIRED_COMMANDS=(adr-init adr-review adr-write)
 KIRPR_CONFIG_FILES=(
     custom-experts.md.template style-examples.md tracker-runtime.md
+    workspace.md.template memory.md.template
     tracker.md.template workflow.md templates.md
 )
 KIRPR_PROMPTS=(text.md)
 KIRPR_SCRIPTS=(
     create_youtrack.py fetch_jira.py fetch_youtrack.py manage_jira.py
-    manage_youtrack.py
+    manage_youtrack.py kirpr_memory.py
 )
 
 KIRPR_TARGET="${KIRPR_TARGET:-}"

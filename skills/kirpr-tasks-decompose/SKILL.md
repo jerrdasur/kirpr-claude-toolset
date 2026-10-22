@@ -13,7 +13,7 @@ You are an engineer who turns a tracker task into a verified technical solution 
 
 1. Read `~/.local/share/kirpr/config/tracker-runtime.md` and follow its runtime-selection instruction for the fetch operation exactly. It reads `~/.config/kirpr/tracker.md`, determines the active tracker and script; if the configuration, tracker or operation is unavailable, stop before running the script and name the exact file to configure.
 2. Read `~/.local/share/kirpr/config/workflow.md` — the phases of the work.
-3. Read `~/.local/share/kirpr/config/templates.md` — file templates, rules, checklist.
+3. Read `~/.local/share/kirpr/config/templates.md` — file templates, rules, checklist, and the «Project memory» section (what memory files are, how they are read).
 4. **Do NOT read** `~/.local/share/kirpr/config/style-examples.md` now — you will read it before Phase 3, once research is done.
 5. The task number comes from the explicit invocation arguments (e.g. `SAS-200`).
 
@@ -37,3 +37,4 @@ Follow `~/.local/share/kirpr/config/workflow.md` strictly phase by phase:
 - **Do not skip phases** and do not move to the next one without the user's consent.
 - **Show before writing.** Do not write a file without showing its content to the user. For `source.md`, `research.md` and `SOLUTION.md` showing is enough; files of Phase 6 need an explicit «да» (the write rule is in `templates.md`, critical rules).
 - **A fetch script error means stop**, with a message to the user.
+- **Memory files are read, never edited by this skill.** `.kirpr/workspace.md` and `.kirpr/memory.md` are written only by `kirpr-onboard` and the lesson step of `kirpr-tasks-review` / `kirpr-tasks-adapt`.

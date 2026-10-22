@@ -26,6 +26,7 @@ Follow the loading pattern from `~/.local/share/kirpr/config/templates.md` (sect
 After loading the base context:
 - If scope = whole decomposition → read `research.md` and **all** task files.
 - If scope = one file → read that file, `SOLUTION.md`, `research.md` and its dependency row from the table in `00-overview.md`.
+- Read `.kirpr/memory.md` of every service in scope (paths from `.kirpr/workspace.md`); their `## Уроки` feed Category 5.
 
 ## Execution
 
@@ -47,9 +48,9 @@ Go through the items of the checklist from `~/.local/share/kirpr/config/template
 - `Решение: пройдено`
 - `Решение: не пройдено — пункты {номера}` (with a quote from `SOLUTION.md` for every failed item)
 
-### Phase 2: Analysis in 4 categories
+### Phase 2: Analysis in 5 categories
 
-Check every task in scope against all 4 categories. Determine severity for every finding.
+Check every task in scope against all 5 categories. Determine severity for every finding.
 
 #### Category 1: Ambiguities
 - [ ] Every step is unambiguous — two developers would implement it the same way ("добавить логику", "обработать ошибку" without a condition — bad)
@@ -77,6 +78,10 @@ Check every task in scope against all 4 categories. Determine severity for every
 - [ ] Technical risks identified (new dependencies, unfamiliar API, no prototype)
 - [ ] Dependencies on external components / other teams are stated explicitly
 - [ ] No bottleneck in deployment order (one task does not block everything else)
+
+#### Category 5: Lessons
+- [ ] The task does not repeat a situation recorded as a lesson `L-NNN` in its service's `memory.md` (a finding is `Важно` and cites the lesson id)
+- [ ] «Проверить» uses the commands from `## Как проверять` of the service, not invented ones
 
 ### Phase 2.5: Quality scoring
 
@@ -182,7 +187,19 @@ For every such finding:
 5. Update `.context.md`:
    - Section 3: add the review decisions (accepted and rejected, with justification).
    - **Section 5.5**: write the final quality scores and the «Решение: …» line per the template in `~/.local/share/kirpr/config/templates.md`.
-   - Section 7: update the last-adaptation date.
+   - Section 7: update the last-adaptation date and «Версия памяти».
+
+### Phase 6: Lessons (HITL)
+
+Trigger: a finding of Category 2 or 3 contradicted the code, or a file stayed below score 8 after Phase 3.5. Otherwise skip the phase.
+
+Lessons are recorded only through the script and only with the user's consent (section «Writing lessons (HITL)» in `templates.md`):
+
+1. Formulate 0–3 candidates in the lesson format: a mistake of the decomposition process and how to avoid it next time, not a fact about the code.
+2. For each candidate run `python3 ~/.local/share/kirpr/scripts/kirpr_memory.py lesson add --file <service>/.kirpr/memory.md --text "..." --task {НОМЕР} [--refs a,b] --dry-run` (omit `--refs` when there is none). The script prints the resulting line, or refuses: «memory.md не найден» — tell the user to run `$kirpr-onboard` in Codex or `/kirpr:onboard` in Claude Code (or `kirpr_memory.py init`) first and skip this service; «похоже на L-NNN» (exit code 2) — a similar lesson exists: merge the two texts into one and run `lesson amend L-NNN --file ... --text "<merged text>" --dry-run`, which prints «было / станет».
+3. Show the diff per file («добавить L-004 в `scansrv/.kirpr/memory.md`», «уточнить L-002: было … → станет …»).
+4. Ask per file: «Записать уроки в {файл}?» — `да` / `нет`. On `да` rerun exactly the commands from step 2 (`add` or `amend`) without `--dry-run`; on `нет` write nothing and do not ask again.
+5. **Do not write a lesson without the user's explicit «да».** Never edit `memory.md` by hand; the script is the only writer.
 
 ## Additional review rules
 

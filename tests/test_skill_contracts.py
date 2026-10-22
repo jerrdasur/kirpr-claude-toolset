@@ -8,7 +8,7 @@ ALL_SKILLS = (
     "kirpr-task-fetch", "kirpr-task-create", "kirpr-task-update",
     "kirpr-task-delete", "kirpr-tasks-decompose", "kirpr-tasks-review",
     "kirpr-tasks-adapt", "kirpr-tasks-push", "kirpr-text",
-    "expert-panel", "grill-me",
+    "expert-panel", "grill-me", "kirpr-onboard",
 )
 
 
@@ -142,6 +142,7 @@ class TestDecompositionSkills(unittest.TestCase):
         ("tasks-review", "kirpr-tasks-review"),
         ("tasks-adapt", "kirpr-tasks-adapt"),
         ("tasks-push", "kirpr-tasks-push"),
+        ("onboard", "kirpr-onboard"),
     )
 
     def test_explicit_skills_exist(self):
@@ -201,3 +202,32 @@ class TestExistingSkillPortability(unittest.TestCase):
         )
         self.assertIn("CLAUDE.md", lenses)
         self.assertIn("AGENTS.md", lenses)
+
+
+class TestMemoryWriters(unittest.TestCase):
+    def test_review_and_adapt_write_lessons_via_script_with_hitl(self):
+        for name, phase in (("kirpr-tasks-review", "Phase 6"), ("kirpr-tasks-adapt", "Phase F")):
+            text = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+            with self.subTest(skill=name):
+                self.assertIn(phase, text)
+                self.assertIn("kirpr_memory.py lesson add", text)
+                self.assertIn("--dry-run", text)
+                self.assertIn("Do not write a lesson without", text)
+                self.assertNotIn("Edit memory.md", text)
+
+    def test_onboard_writes_only_through_the_script(self):
+        text = (ROOT / "skills/kirpr-onboard/SKILL.md").read_text(encoding="utf-8")
+        for needle in ("kirpr_memory.py init", "kirpr_memory.py role", "refresh --dry-run"):
+            self.assertIn(needle, text)
+        self.assertNotIn("editing the «Роль» cells", text)
+
+    def test_hitl_block_describes_amend_path(self):
+        for name in ("kirpr-tasks-review", "kirpr-tasks-adapt"):
+            text = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+            with self.subTest(skill=name):
+                self.assertIn("lesson amend L-NNN --file", text)
+                self.assertIn("kirpr_memory.py init", text)
+
+    def test_review_has_lessons_category(self):
+        text = (ROOT / "skills/kirpr-tasks-review/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("#### Category 5: Lessons", text)

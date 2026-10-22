@@ -70,6 +70,7 @@ After loading the base context:
 ### Phase C: Discussing the changes (loop)
 
 1. **Read only the affected files** (`обновить` + those that `новый` files depend on).
+   Also read `.kirpr/memory.md` only of the services in the impact zone (paths from `.kirpr/workspace.md`).
 2. For every affected file, propose concrete changes.
 3. Ask clarifying questions **one at a time**, with options.
 4. After every answer — show the updated change plan.
@@ -117,8 +118,20 @@ If not passed — return to Phase C.
    - Section 4: update the structure.
    - Section 5: update the file map (statuses: `generated` → `modified`, `new`, `removed`), including the `SOLUTION.md` and `research.md` rows.
    - Section 5.5: mark the scores as stale (`⚠️ до адаптации {дата}`) until a new review has run.
-   - Section 7: update the adaptation date, increment the adaptation counter.
+   - Section 7: update the adaptation date, increment the adaptation counter, refresh «Версия памяти».
 5. Show the totals: which files were updated, created, deleted.
+
+### Phase F: Lessons (HITL)
+
+Trigger: the user chose option 2 or 3 in Phase A and the change was caused by a mistake of the original decomposition, not by new input. Otherwise skip the phase.
+
+Lessons are recorded only through the script and only with the user's consent (section «Writing lessons (HITL)» in `templates.md`):
+
+1. Formulate 0–3 candidates in the lesson format: a mistake of the decomposition process and how to avoid it next time, not a fact about the code.
+2. For each candidate run `python3 ~/.local/share/kirpr/scripts/kirpr_memory.py lesson add --file <service>/.kirpr/memory.md --text "..." --task {НОМЕР} [--refs a,b] --dry-run` (omit `--refs` when there is none). The script prints the resulting line, or refuses: «memory.md не найден» — tell the user to run `$kirpr-onboard` in Codex or `/kirpr:onboard` in Claude Code (or `kirpr_memory.py init`) first and skip this service; «похоже на L-NNN» (exit code 2) — a similar lesson exists: merge the two texts into one and run `lesson amend L-NNN --file ... --text "<merged text>" --dry-run`, which prints «было / станет».
+3. Show the diff per file («добавить L-004 в `scansrv/.kirpr/memory.md`», «уточнить L-002: было … → станет …»).
+4. Ask per file: «Записать уроки в {файл}?» — `да` / `нет`. On `да` rerun exactly the commands from step 2 (`add` or `amend`) without `--dry-run`; on `нет` write nothing and do not ask again.
+5. **Do not write a lesson without the user's explicit «да».** Never edit `memory.md` by hand; the script is the only writer.
 
 ## Conflict handling
 

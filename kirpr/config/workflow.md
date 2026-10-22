@@ -4,12 +4,14 @@ The goal is not a list of tasks but a verified technical solution from which the
 
 ## Phase 1: Fetch from the tracker
 
+0. Read `.kirpr/workspace.md` in the current directory (section «Project memory» of `templates.md`). Missing — say in one line that the workspace map was not found and `$kirpr-onboard` in Codex or `/kirpr:onboard` in Claude Code creates it, then continue without memory.
 1. Read `~/.local/share/kirpr/config/tracker-runtime.md` and follow its runtime-selection instruction for the fetch operation exactly. It reads `~/.config/kirpr/tracker.md` and determines the script for the current tracker.
 2. Run the script with the task number — it prints summary, description and comments.
 3. If the script returned an error — **stop** and tell the user.
 4. Extract the numbers of related tasks from the description and comments and load them with the same script (up to 50). Check whether child issues already exist in the tracker.
 5. Show the user: title, description, related tasks, child issues found in the tracker.
 6. Create the task directory (lowercase number, e.g. `sas-200/`) and `source.md` from the template in `~/.local/share/kirpr/config/templates.md`.
+7. For every service on the scenario's path, read `<path>/.kirpr/memory.md` by the path from the workspace table. Missing — one line, continue. Memory files are read, never edited here.
 
 The task description is the author's hypothesis, not a fact. Its claims («висит час», «падает из-за X») are verified in Phase 2 like everything else.
 
@@ -17,7 +19,7 @@ The task description is the author's hypothesis, not a fact. Its claims («ви�
 
 A fact that a tool can obtain is obtained with a tool. The user is asked only about what exists neither in code, nor in data, nor in documentation — one question at a time, after the research, not instead of it.
 
-**2a — Code of every participant, end to end.** From the description, identify the services and repositories on the scenario's path and read them in full, not by headings: entry points (RPC, CLI, cron), the data path from entry to storage, state machines and allowed transitions, error handling and retries, existing tests and fixtures, infrastructure specs (orchestration, CI, alerting), generated artifacts (clients, API schemas). Record `file:function` for every fact. Check that repository branches are current.
+**2a — Code of every participant, end to end.** From the description, identify the services and repositories on the scenario's path and read them in full, not by headings: entry points (RPC, CLI, cron), the data path from entry to storage, state machines and allowed transitions, error handling and retries, existing tests and fixtures, infrastructure specs (orchestration, CI, alerting), generated artifacts (clients, API schemas). Record `file:function` for every fact. Check that repository branches are current. Traps and lessons from `memory.md` are facts of research: cite them as `L-NNN` where they shape a finding.
 
 **2b — Primary sources on production behavior.** Collect alerts, logs and metrics for the affected components for the incident (if there was one) and for a representative period (e.g. 30 days). If there is no production data or the task does not concern it — state that explicitly in `research.md` rather than skipping the step silently. Build a «время / компонент / событие» table and a quantitative picture: how many times, which outcomes, which combinations. This step is usually enough to confirm or refute the task's premise.
 
@@ -64,7 +66,8 @@ Agree the statement with the user before moving to the solution. Write it as the
 2. Task text uses the short format from `templates.md`: heading `{сервис}: {название}`, 3–6 verb steps, a «Проверить» list. No metadata, estimates or justifications.
 3. Task order defines deployment order. A tracker dependency is created only where it is technical (client after server).
 4. Show all texts at once, agree the edits.
-5. Go through the checklist from `templates.md` and show the result. Not passed — return to editing.
+5. Check against memory: no task repeats a situation recorded as a lesson `L-NNN` of its service; the «Проверить» list uses commands from `## Как проверять` of that service, not invented ones.
+6. Go through the checklist from `templates.md` and show the result. Not passed — return to editing.
 
 ## Phase 6: Generate files
 

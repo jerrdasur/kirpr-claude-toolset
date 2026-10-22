@@ -5,7 +5,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "kirpr" / "config"
 SKILLS = sorted((ROOT / "skills").glob("kirpr-tasks-*/SKILL.md"))
-TEXTS = [CONFIG / n for n in ("workflow.md", "templates.md")] + SKILLS
+TEXTS = [CONFIG / n for n in ("workflow.md", "templates.md")] + SKILLS + [ROOT / "skills" / "kirpr-onboard" / "SKILL.md"]
 
 LEGACY = [
     r"XX-Y", r"~\dч", r"<= 4 час", r"Параллельные потоки",
@@ -56,6 +56,39 @@ class TestTemplates(unittest.TestCase):
         text = (CONFIG / "templates.md").read_text(encoding="utf-8")
         section = text.split("## 00-overview.md template", 1)[1].split("\n---", 1)[0]
         self.assertIn("## Внешние зависимости", section)
+
+
+class TestProjectMemory(unittest.TestCase):
+    def setUp(self):
+        self.text = (CONFIG / "templates.md").read_text(encoding="utf-8")
+
+    def test_loading_section_mentions_memory_files(self):
+        section = self.text.split("## Loading decomposition context", 1)[1].split("\n---", 1)[0]
+        for name in ("workspace.md", "memory.md", "kirpr-onboard"):
+            with self.subTest(name=name):
+                self.assertIn(name, section)
+
+    def test_memory_section_has_format_and_hitl(self):
+        section = self.text.split("## Project memory", 1)[1].split("\n---", 1)[0]
+        for needle in ("### Lesson format", "[L-NNN]", "### Writing lessons (HITL)", "--dry-run", "150"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, section)
+
+    def test_context_template_has_memory_version(self):
+        section = self.text.split("## .context.md template", 1)[1].split("\n---", 1)[0]
+        self.assertIn("**Версия памяти:**", section)
+
+
+class TestDecomposeReadsMemory(unittest.TestCase):
+    def test_workflow_phases_reference_memory(self):
+        wf = (CONFIG / "workflow.md").read_text(encoding="utf-8")
+        p1 = wf.split("## Phase 1", 1)[1].split("## Phase 2", 1)[0]
+        p5 = wf.split("## Phase 5", 1)[1].split("## Phase 6", 1)[0]
+        self.assertIn("workspace.md", p1)
+        self.assertIn("memory.md", p1)
+        self.assertIn("L-", p5)
+        skill = (ROOT / "skills/kirpr-tasks-decompose/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Project memory", skill)
 
 
 if __name__ == "__main__":

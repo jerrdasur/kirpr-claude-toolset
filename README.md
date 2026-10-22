@@ -28,6 +28,7 @@ entering the issue number.
 | Review decomposition | `/kirpr:tasks-review SAS-200` | `$kirpr-tasks-review SAS-200` |
 | Adapt decomposition | `/kirpr:tasks-adapt SAS-200` | `$kirpr-tasks-adapt SAS-200` |
 | Push subtasks | `/kirpr:tasks-push SAS-200` | `$kirpr-tasks-push SAS-200` |
+| Create project memory | `/kirpr:onboard` | `$kirpr-onboard` |
 
 ### Text editing
 
@@ -131,6 +132,35 @@ export JIRA_EMAIL=you@example.com
 Python 3 is required for the tracker scripts; they use only the standard
 library.
 
+## Project memory
+
+Decomposition, review and adaptation read two memory files that live in git:
+
+- `.kirpr/workspace.md` in the workspace (the directory you run decomposition
+  from): a table of services with path, base branch, tracker project and role.
+- `.kirpr/memory.md` in each service repository: how to test and lint, traps
+  (generators, what not to review), and lessons from past decompositions.
+
+Store only what cannot be derived from the code; no architecture overviews.
+Each file is limited to 150 lines. `/kirpr:onboard` (`$kirpr-onboard`) creates
+the files; the skills only read them. Lessons are written by the review and
+adapt skills after an explicit confirmation, never automatically.
+
+All writes go through `~/.local/share/kirpr/scripts/kirpr_memory.py`:
+
+```bash
+kirpr_memory.py refresh [--workspace DIR] [--dry-run]   # rebuild the service table, keep roles
+kirpr_memory.py role --service S --role R [--dry-run]  # set a service role in the table
+kirpr_memory.py init --file F --name N [--check L]... [--traps L]... [--dry-run]  # create memory.md
+kirpr_memory.py lesson add --file F --text T --task ID [--refs a,b] [--dry-run]
+kirpr_memory.py lesson amend L-003 --file F --text T    # refine an existing lesson
+kirpr_memory.py lint --file F                           # sections, format, budget
+kirpr_memory.py stale --file F                          # lesson refs that no longer exist
+```
+
+`lesson add` exits with code 2 when a similar lesson exists and names the
+`amend` command to use instead.
+
 ## Uninstall
 
 Remove only one platform or both with the same target selector:
@@ -152,7 +182,7 @@ never removed.
 ```text
 commands/kirpr/  Claude Code command adapters
 installer/       shared installer logic
-kirpr/           shared runtime configuration, prompts, and scripts
+kirpr/           shared runtime configuration, prompts, and scripts (incl. kirpr_memory.py)
 skills/          canonical Agent Skills for Codex and Claude Code
 install.sh       local installation
 install-remote.sh archive-based remote bootstrap

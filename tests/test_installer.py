@@ -12,7 +12,7 @@ ALL_SKILLS = (
     "kirpr-task-fetch", "kirpr-task-create", "kirpr-task-update",
     "kirpr-task-delete", "kirpr-tasks-decompose", "kirpr-tasks-review",
     "kirpr-tasks-adapt", "kirpr-tasks-push", "kirpr-text",
-    "expert-panel", "grill-me",
+    "expert-panel", "grill-me", "kirpr-onboard",
 )
 RETIRED_SKILLS = (
     "kirpr-adr", "kirpr-adr-init", "kirpr-adr-write", "kirpr-adr-review",
@@ -91,7 +91,7 @@ class TestCleanInstall(InstallerCase):
     def test_claude_target(self):
         self.run_script("install.sh", "--target", "claude")
         self.assert_skills(self.root / ".claude" / "skills")
-        self.assertEqual(len(list((self.root / ".claude" / "commands" / "kirpr").glob("*.md"))), 9)
+        self.assertEqual(len(list((self.root / ".claude" / "commands" / "kirpr").glob("*.md"))), 10)
         self.assertFalse((self.root / ".agents" / "skills").exists())
         records = self.manifest_records()
         self.assertIn(("target", "claude"), records)

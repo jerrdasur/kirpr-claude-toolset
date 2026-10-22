@@ -21,12 +21,44 @@ Loading pattern for `$kirpr-tasks-review` and `$kirpr-tasks-adapt` in Codex, or 
 2. Read `{dir}/SOLUTION.md` and `{dir}/00-overview.md`.
 3. Further files as needed (depends on the command's scope); facts and sources are in `{dir}/research.md`.
 4. **Do not query the tracker API** — the data is already in `.context.md`. If you need details of the tracker description — read `{dir}/source.md`.
+5. Read project memory (section «Project memory» below): `.kirpr/workspace.md` at the workspace root, then `<path>/.kirpr/memory.md` of every service in scope. A missing file — one line «память не найдена, запустите `$kirpr-onboard` в Codex или `/kirpr:onboard` в Claude Code» and continue.
 
 ### Option B: `.context.md` does not exist (fallback)
 1. Read `{dir}/source.md`, `{dir}/SOLUTION.md` and `{dir}/00-overview.md`.
 2. Read all `{dir}/*.md` files.
 3. Read `~/.config/kirpr/tracker.md` to determine the tracker script. Load the task data.
 4. Tell the user: "Файл `.context.md` не найден — загружаю полный контекст."
+5. Read project memory as in Option A, item 5.
+
+---
+
+## Project memory
+
+Project memory lives in git and is read explicitly by the skills; no harness auto-memory. The only writer is `python3 ~/.local/share/kirpr/scripts/kirpr_memory.py` (commands `refresh`, `role`, `init`, `lesson add`, `lesson amend`, `lint`, `stale`, all with `--dry-run`). Skills never edit memory files directly.
+
+### Files
+
+- `<workspace>/.kirpr/workspace.md` — the workspace map: one table of services (name, relative path, base branch, tracker project, role). The workspace is the directory `$kirpr-tasks-decompose` runs from (where `sas-200/` directories live). `refresh` fills the table from the repositories but never overwrites a base branch or role already in the file; «Роль» is set with `role`. A renamed service is a new row — its role is set again.
+- `<repo>/.kirpr/memory.md` — per-repository memory with three sections in this order: `## Как проверять` (test and lint commands, test database), `## Ловушки` (non-standard practices: generators and what not to review, generation order, things that break silently), `## Уроки`.
+- Budget: 150 lines and 15 360 bytes per file; `lint` fails above it.
+- Store only what cannot be derived from the code: test and lint commands, generators and what not to review, service ↔ tracker mapping, base branches, lessons. No architecture overviews, package lists, grep-able paths, secrets.
+- Memory is read at the start of `$kirpr-tasks-decompose` (Phase 1), `$kirpr-tasks-review` and `$kirpr-tasks-adapt` (loading context). Lessons and traps are facts of research and are cited as `L-NNN`.
+
+### Lesson format
+
+```markdown
+- [L-NNN] что пошло не так → как избежать (TASK-ID; YYYY-MM-DD; refs: путь, путь)
+```
+
+`refs` is optional. A lesson records a mistake of the decomposition or review process and how to avoid it next time — not a fact about the code (facts go to `## Ловушки` or stay in research).
+
+### Writing lessons (HITL)
+
+1. Formulate 0–3 candidates in the lesson format. Triggers: review found a contradiction or gap against the code, a file stayed below score 8, an adaptation was caused by a decomposition mistake rather than new input.
+2. For each candidate run `kirpr_memory.py lesson add --file <service>/.kirpr/memory.md --text "..." --task {НОМЕР} [--refs a,b] --dry-run` (omit `--refs` when there is none). «memory.md не найден» — the service has no memory yet: point the user to `$kirpr-onboard` / `/kirpr:onboard` (or `kirpr_memory.py init`) and skip it. «похоже на L-NNN» (exit code 2) — merge the texts and run `lesson amend L-NNN --file ... --text "<merged text>" --dry-run`, which prints «было / станет». The script validates the resulting file (format, budget) and refuses to write anything that would break it.
+3. Show the result as a diff per file: «добавить L-004 в `scansrv/.kirpr/memory.md`», «уточнить L-002: было … → станет …».
+4. Ask per file: «Записать уроки в {файл}?» — `да` / `нет`. Write only after an explicit «да» (rerun exactly the step-2 commands without `--dry-run`). «нет» — nothing is written and the question is not repeated.
+5. Do not write a lesson without the user's explicit «да». Never edit `memory.md` by hand.
 
 ---
 
@@ -251,6 +283,7 @@ The `.context.md` file is created at the end of Phase 6 of `$kirpr-tasks-decompo
 - **Дата последней адаптации:** —
 - **Версия context:** 1
 - **Кол-во адаптаций:** 0
+- **Версия памяти:** {дата из workspace.md или —}
 ```
 
 ---
