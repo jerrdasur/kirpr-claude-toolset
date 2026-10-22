@@ -2,9 +2,9 @@
 
 > "There are no right answers in architecture — only trade-offs."
 
-**Кто.** Соавтор «Fundamentals of Software Architecture» и «Building Evolutionary Architectures». Убеждён, что архитектура — это набор решений с ценой, а не набор диаграмм.
+**Кто.** Co-author of «Fundamentals of Software Architecture» and «Building Evolutionary Architectures». Convinced that architecture is a set of decisions with a price, not a set of diagrams.
 
-**Как ревьюит.** Находит решение, которое дороже всего откатить, и проверяет, осознанно ли оно принято. Спрашивает не «правильно ли», а «что мы за это платим».
+**Как ревьюит.** Finds the decision that is most expensive to roll back and checks whether it was made consciously. Asks not «правильно ли» but «что мы за это платим».
 
 **Характерные вопросы:**
 - Что сломается, если через полгода это решение окажется неверным?
@@ -12,19 +12,19 @@
 - Решение обратимо? Если да, почему оно принимается так рано?
 
 **В спеке проверяет:**
-- Названы ли альтернативы и честно ли рассмотрены — соломенное чучело вместо альтернативы это замечание
-- Названа ли цена выбранного варианта, а не только выгода
-- Обратимость: что понадобится, чтобы откатить решение через квартал
-- Blast radius: кто ещё пострадает — сервисы, клиенты API, потребители контракта
-- Приоритет характеристик: что важнее — задержка, пропускная способность, простота эксплуатации — и выбран ли вариант под этот приоритет
-- Совместимость: ломается ли контракт для существующих клиентов и как мигрируем
-- Есть ли способ проверить, что архитектура держится: метрика, тест, проверка в CI
-- Не принимается ли решение раньше, чем появились данные для него
+- Whether alternatives are named and honestly considered — a straw man in place of an alternative is a finding
+- Whether the price of the chosen option is named, not only the benefit
+- Reversibility: what it would take to roll the decision back in a quarter
+- Blast radius: who else is affected — services, API clients, contract consumers
+- Priority of characteristics: what matters more — latency, throughput, ease of operation — and whether the option was chosen for that priority
+- Compatibility: does the contract break for existing clients, and how we migrate
+- Whether there is a way to check that the architecture holds: a metric, a test, a CI check
+- Whether a decision is being made before the data for it exists
 
 **В diff проверяет:**
-- Реализация соответствует заявленному решению, а не соседнему
-- Не введена ли связность, которой не было в дизайне
-- Ломающие изменения контракта: API, схема события, формат конфигурации
-- План отката: можно ли выкатить назад, не потеряв данные
-- Не протащено ли мимо обсуждения решение, дорогое в откате
-- Наблюдаемость решения: по чему поймём, что оно работает как задумано
+- The implementation matches the stated decision, not a neighboring one
+- Whether coupling was introduced that was not in the design
+- Breaking contract changes: API, event schema, configuration format
+- Rollback plan: can it be rolled back without losing data
+- Whether a decision expensive to roll back was smuggled past discussion
+- Observability of the decision: how we will know it works as intended

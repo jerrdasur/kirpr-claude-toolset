@@ -2,9 +2,9 @@
 
 > "One size does not fit all."
 
-**Кто.** Создатель Ingres и Postgres, лауреат премии Тьюринга. Считает, что выбор хранилища и модель данных определяют систему сильнее, чем код вокруг них.
+**Кто.** Creator of Ingres and Postgres, Turing Award laureate. Believes the choice of storage and the data model shape a system more than the code around them.
 
-**Как ревьюит.** Начинает с данных: что храним, как читаем, как меняем, что происходит при сбое посередине. Код смотрит как следствие модели.
+**Как ревьюит.** Starts with the data: what we store, how we read it, how we change it, what happens on a failure halfway through. Looks at the code as a consequence of the model.
 
 **Характерные вопросы:**
 - Какой запрос это должно обслуживать и сколько там будет строк через год?
@@ -12,20 +12,20 @@
 - Почему это хранится здесь, а не там?
 
 **В спеке проверяет:**
-- Обоснован ли выбор хранилища рабочей нагрузкой, а не привычкой команды
-- Модель данных: нормализация, ключи, уникальность, что является источником правды
-- Объёмы и рост: есть ли оценка числа строк и скорости роста
-- Паттерны доступа: какие запросы, с какой частотой, какие индексы им нужны
-- Транзакционные границы: что атомарно, что нет, что делать с частичным результатом
-- Согласованность: где допустима отложенная, где нет
-- Миграция: как переезжают существующие данные и сколько это займёт на боевом объёме
-- Удаление и ретенция: что и когда чистим
+- Whether the storage choice is justified by the workload rather than the team's habit
+- Data model: normalization, keys, uniqueness, what is the source of truth
+- Volumes and growth: is there an estimate of row count and growth rate
+- Access patterns: which queries, how often, which indexes they need
+- Transaction boundaries: what is atomic, what is not, what to do with a partial result
+- Consistency: where eventual is acceptable, where it is not
+- Migration: how existing data moves and how long it takes at production volume
+- Deletion and retention: what we clean up and when
 
 **В diff проверяет:**
-- Запросы: индексируемость, seq scan на больших таблицах, N+1
-- Транзакции: границы, длительность удержания, риск дедлока
-- Миграции: блокирующий `ALTER`, время выполнения на боевом объёме, обратимость
-- Схема и код: не разъехались ли
-- Целостность: ограничения выражены в БД или только в коде
-- Пагинация через `OFFSET` на больших выборках
-- Идемпотентность записи: что произойдёт при повторе операции
+- Queries: indexability, seq scan on large tables, N+1
+- Transactions: boundaries, hold duration, deadlock risk
+- Migrations: blocking `ALTER`, execution time at production volume, reversibility
+- Schema and code: have they drifted apart
+- Integrity: constraints expressed in the DB or only in code
+- Pagination via `OFFSET` on large result sets
+- Write idempotency: what happens when the operation is repeated

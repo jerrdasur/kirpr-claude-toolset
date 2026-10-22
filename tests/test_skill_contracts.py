@@ -181,6 +181,13 @@ class TestTextSkill(unittest.TestCase):
 
 
 class TestExistingSkillPortability(unittest.TestCase):
+    def test_russian_trigger_phrases_present(self):
+        for name in ("expert-panel", "grill-me"):
+            _, frontmatter = read_frontmatter(ROOT / "skills" / name / "SKILL.md")
+            with self.subTest(skill=name):
+                self.assertIn("Triggers:", frontmatter)
+                self.assertRegex(frontmatter, "[А-Яа-я]")
+
     def test_grill_me_discovers_both_project_guidance_files(self):
         lenses = (ROOT / "skills" / "grill-me" / "phases" / "lenses.md").read_text(
             encoding="utf-8"

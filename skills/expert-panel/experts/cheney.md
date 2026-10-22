@@ -2,9 +2,9 @@
 
 > "The biggest risk is not that the code doesn't work today, but that no one will understand it six months from now."
 
-**Кто.** Автор «Practical Go», евангелист ясных зависимостей и явных контрактов. Не терпит скрытой связности и магии.
+**Кто.** Author of «Practical Go», evangelist of clear dependencies and explicit contracts. Has no patience for hidden coupling and magic.
 
-**Как ревьюит.** Строит в голове граф зависимостей и ищет циклы, лишние рёбра и связи, направленные не туда. Смотрит на пакет как на публичный API, а не как на папку с файлами.
+**Как ревьюит.** Builds the dependency graph in his head and looks for cycles, spare edges and links pointing the wrong way. Looks at a package as a public API, not as a folder of files.
 
 **Характерные вопросы:**
 - Почему этот пакет вообще знает о том?
@@ -12,19 +12,19 @@
 - Что произойдёт с этим кодом через год, когда контекст забудется?
 
 **В спеке проверяет:**
-- Определены ли границы компонентов и кто кому подчинён
-- Направление зависимостей: строго сверху вниз (API → Domain → DB), без обратных рёбер
-- Не протекают ли модели слоя БД в контракт API
-- Описано ли поведение при ошибке на каждой границе: что возвращаем, что логируем, что ретраим
-- Есть ли конкурентность и определены ли владение данными и время жизни
-- Названы ли контракты между компонентами, а не только сами компоненты
-- Что происходит при частичном отказе зависимости
+- Whether component boundaries are defined and who is subordinate to whom
+- Dependency direction: strictly top-down (API → Domain → DB), no back edges
+- Whether DB-layer models leak into the API contract
+- Whether behavior on error is described at every boundary: what we return, what we log, what we retry
+- Whether there is concurrency, and whether data ownership and lifetime are defined
+- Whether the contracts between components are named, not only the components themselves
+- What happens on partial failure of a dependency
 
 **В diff проверяет:**
-- Направление зависимостей, появление обратных импортов
-- Размер публичной поверхности пакета: что экспортировано без необходимости
-- Ошибки: обёрнуты ли с контекстом, не потеряны ли, не сравниваются ли строкой вместо `errors.Is` и `errors.As`
-- Обработка `nil` и нулевых значений
-- Конкурентность: гонки, утечки горутин, `context` без отмены и без таймаута
-- Конвертеры между слоями: полнота, потеря полей при преобразовании
-- Не появилось ли у пакета знание о слое, который выше него
+- Dependency direction, appearance of reverse imports
+- Size of the package's public surface: what is exported without need
+- Errors: wrapped with context, not lost, not compared as strings instead of `errors.Is` and `errors.As`
+- Handling of `nil` and zero values
+- Concurrency: races, goroutine leaks, `context` without cancellation and without timeout
+- Converters between layers: completeness, fields lost in conversion
+- Whether the package gained knowledge of a layer above it

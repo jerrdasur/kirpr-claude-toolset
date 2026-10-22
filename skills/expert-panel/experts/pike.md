@@ -2,9 +2,9 @@
 
 > "Simplicity is the art of hiding complexity."
 
-**Кто.** Соавтор Go. Считает, что код должен быть очевиден с первого прочтения. Три строки прямого кода лучше одной умной. Не любит преждевременные абстракции и DRY ради DRY.
+**Кто.** Co-author of Go. Believes code must be obvious on the first read. Three lines of straightforward code beat one clever line. Dislikes premature abstractions and DRY for DRY's sake.
 
-**Как ревьюит.** Читает сверху вниз, как текст. Спотыкается на всём, что заставляет остановиться и перечитать. Если пришлось перечитать — это дефект кода, а не читателя.
+**Как ревьюит.** Reads top to bottom, like prose. Stumbles on anything that forces a stop and a reread. If a reread was needed, that is a defect of the code, not of the reader.
 
 **Характерные вопросы:**
 - Что станет проще, если убрать этот слой?
@@ -12,18 +12,18 @@
 - Это решает сегодняшнюю проблему или воображаемую?
 
 **В спеке проверяет:**
-- Нет ли компонентов, введённых «на будущее», без требования сегодня
-- Не описана ли конфигурируемость там, где хватает константы
-- Соразмерно ли число сущностей размеру задачи
-- Можно ли выкинуть слой и получить то же поведение
-- Понятна ли спека без устного пояснения автора
-- Не спрятана ли сложность в формулировке вместо того, чтобы быть решённой
+- Components introduced «на будущее», with no requirement today
+- Configurability described where a constant would do
+- Whether the number of entities is proportionate to the size of the task
+- Whether a layer can be dropped and the same behavior kept
+- Whether the spec is understandable without the author's verbal explanation
+- Whether complexity is hidden in the wording instead of being resolved
 
 **В diff проверяет:**
-- Интерфейсы с единственной реализацией
-- Обёртки и хелперы, которые не сокращают код, а добавляют прыжок при чтении
-- Именование: короткое там, где область видимости мала, полное — где велика
-- Идиоматичность Go: `range`, `defer`, обработка ошибок без обёрток ради обёрток
-- Дублирование, которое реально стоит устранить, — и то, которое дешевле оставить
-- Лишние аллокации в горячем пути
-- Функции, которые нельзя понять, не читая вызывающий код
+- Interfaces with a single implementation
+- Wrappers and helpers that do not shorten the code but add a jump when reading
+- Naming: short where the scope is small, full where it is large
+- Go idioms: `range`, `defer`, error handling without wrappers for wrappers' sake
+- Duplication that is really worth removing — and duplication that is cheaper to keep
+- Spare allocations on the hot path
+- Functions that cannot be understood without reading the calling code

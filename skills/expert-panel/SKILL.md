@@ -1,87 +1,89 @@
 ---
 name: expert-panel
-description: "Мульти-персонное ревью Go-проектов панелью экспертов (Rob Pike, Dave Cheney, Neal Ford, Michael Stonebraker плюс пользовательские). Два режима: ревью спеки перед планированием и ревью git diff перед коммитом. Вызывается только явно: Codex — $expert-panel spec <путь> или $expert-panel diff [база]; Claude Code — /expert-panel spec <путь> или /expert-panel diff [база]."
+description: "Multi-persona review of Go projects by a panel of experts (Rob Pike, Dave Cheney, Neal Ford, Michael Stonebraker plus custom ones). Two modes: spec review before planning and git diff review before committing. Explicit invocation only: Codex — $expert-panel spec <path> or $expert-panel diff [base]; Claude Code — /expert-panel spec <path> or /expert-panel diff [base]. Triggers: ревью панелью экспертов, прогони через экспертов, ревью спеки, ревью диффа."
 ---
 
-# expert-panel — ревью панелью экспертов
+# expert-panel — review by a panel of experts
 
-Прогоняет артефакт через панель экспертов. Каждый эксперт — отдельный агент со своим взглядом, оркестратор сводит результаты и ведёт разбор с пользователем.
+Everything addressed to the user and everything written to files is in Russian.
 
-Запускается только по явному вызову. Панель дорогая: параллельные агенты на каждого эксперта.
+Runs an artifact through a panel of experts. Each expert is a separate agent with its own perspective; the orchestrator merges the results and walks through them with the user.
 
-## Разбор аргументов
+Runs only on explicit invocation. The panel is expensive: parallel agents, one per expert.
 
-- `spec [путь]` — ревью спеки. Читай `modes/spec.md` и следуй ему.
-- `diff [база] [--spec путь]` — ревью изменений. Читай `modes/diff.md` и следуй ему.
-- Аргументов нет или формат не распознан — спроси, какой режим нужен. Не угадывай.
+## Argument parsing
 
-Пути к `modes/*.md` и `experts/*.md` — относительно каталога этого файла.
+- `spec [path]` — spec review. Read `modes/spec.md` and follow it.
+- `diff [base] [--spec path]` — change review. Read `modes/diff.md` and follow it.
+- No arguments or unrecognized format — ask which mode is needed. Do not guess.
 
-До чтения персон экспертов проверь доступность изолированной делегации. Если
-её нет, прямо сообщи, что панель не может работать без отдельных агентов, и
-остановись: не читай `experts/*.md` и не собирай панель.
+Paths to `modes/*.md` and `experts/*.md` are relative to this file's directory.
 
-## Сборка активной панели
+Before reading the expert personas, check that isolated delegation is available. If
+it is not, say plainly that the panel cannot work without separate agents, and
+stop: do not read `experts/*.md` and do not assemble the panel.
 
-1. Ядро: `experts/pike.md`, `experts/cheney.md`, `experts/ford.md`, `experts/stonebraker.md`. Идентификаторы: `pike`, `cheney`, `ford`, `stonebraker`.
-2. Прочитай `~/.config/kirpr/custom-experts.md`, если он есть. Учитывай только то, что идёт **после** строки `<!-- BEGIN EXPERTS -->`:
-   - строка `disable: <id>` убирает ядерного эксперта из панели;
-   - каждая секция `## <Имя> — <Домен>` добавляет эксперта.
-   Всё, что выше маркера, — инструкция для человека. Игнорируй её целиком.
-3. Если активных экспертов не осталось — сообщи об этом и прерви работу.
-4. Покажи состав панели одной строкой перед запуском: «Панель: Pike, Cheney, Ford, Stonebraker».
+## Assembling the active panel
 
-## Запуск агентов
+1. Core: `experts/pike.md`, `experts/cheney.md`, `experts/ford.md`, `experts/stonebraker.md`. Ids: `pike`, `cheney`, `ford`, `stonebraker`.
+2. Read `~/.config/kirpr/custom-experts.md` if it exists. Consider only what comes **after** the `<!-- BEGIN EXPERTS -->` line:
+   - a `disable: <id>` line removes a core expert from the panel;
+   - every `## <Имя> — <Домен>` section adds an expert.
+   Everything above the marker is instructions for a human. Ignore it entirely.
+3. If no active experts remain — say so and stop.
+4. Show the panel composition in one line before launching: «Панель: Pike, Cheney, Ford, Stonebraker».
 
-Один агент на эксперта. Все агенты запускаются одним сообщением, чтобы работать параллельно.
+## Launching the agents
 
-В промпт агента входит:
+One agent per expert. All agents are launched in one message so they run in parallel.
 
-- Роль: «Ты — <Имя>. Прочитай файл `<абсолютный путь к experts/<id>.md>` и ревьюй строго по нему.» Для эксперта из overlay текст его секции передаётся прямо в промпте — файла у него нет.
-- Режим: `спека` или `diff` — агент использует соответствующий чеклист своей персоны.
-- Артефакт: абсолютный путь к спеке либо путь к файлу с сохранённым diff.
-- Релевантные пути в репозитории, собранные оркестратором.
-- Префикс для `id` замечаний. Ядро: Pike — `P`, Cheney — `C`, Ford — `F`, Stonebraker — `S`. Экспертам из overlay префиксы раздаёт оркестратор — первая буква фамилии, при коллизии с занятой буквой две первые.
-- Ограничение: только чтение. Агент не редактирует файлы, не запускает тесты, не делает коммитов.
-- Схема ответа (ниже).
+The agent prompt includes:
 
-Файлы персон оркестратор не читает — они нужны только агентам.
+- Role: «Ты — <Имя>. Прочитай файл `<абсолютный путь к experts/<id>.md>` и ревьюй строго по нему.» For an overlay expert the text of its section is passed directly in the prompt — it has no file.
+- Mode: `спека` or `diff` — the agent uses the matching checklist of its persona.
+- Artifact: absolute path to the spec, or the path to the file with the saved diff.
+- Relevant repository paths collected by the orchestrator.
+- The prefix for finding `id`s. Core: Pike — `P`, Cheney — `C`, Ford — `F`, Stonebraker — `S`. Overlay experts get prefixes from the orchestrator — the first letter of the surname, or the first two on collision with a taken letter.
+- Restriction: read-only. The agent does not edit files, run tests or make commits.
+- The response schema (below).
 
-## Схема замечания
+The orchestrator does not read the persona files — only the agents need them.
 
-Агент возвращает список замечаний. Каждое — шесть полей:
+## Finding schema
 
-- `id` — префикс эксперта плюс порядковый номер: `P1`, `C2`, `F3`, `S1`. Префикс агент получает в промпте и не выбирает сам: агенты работают параллельно и не видят друг друга, так что два эксперта с одинаковой первой буквой фамилии заняли бы один префикс и сделали бы ответ пользователя двусмысленным.
-- `severity` — `blocker`, `major`, `minor` или `nit`.
-- `место` — раздел спеки либо `file:line`.
-- `суть` — одно предложение.
-- `почему` — чем это грозит.
-- `правка` — что конкретно изменить.
+The agent returns a list of findings. Each has six fields:
 
-**Замечание без поля «правка» не принимается.** «Тут неясно» — не замечание. «В разделе X не описано поведение при недоступности Y; добавить абзац с ответом сервиса и поведением клиента» — замечание. Такие ответы агента отбрасывай при синтезе.
+- `id` — the expert prefix plus an ordinal: `P1`, `C2`, `F3`, `S1`. The agent receives the prefix in the prompt and does not choose it: agents run in parallel and do not see each other, so two experts with the same first letter of the surname would take one prefix and make the user's answer ambiguous.
+- `severity` — `blocker`, `major`, `minor` or `nit`.
+- `место` — spec section or `file:line`.
+- `суть` — one sentence.
+- `почему` — what it threatens.
+- `правка` — what exactly to change.
 
-Отдельно агент возвращает список удачных решений — что сделано правильно. Минимум одно, если есть за что.
+**A finding without the «правка» field is not accepted.** «Тут неясно» is not a finding. «В разделе X не описано поведение при недоступности Y; добавить абзац с ответом сервиса и поведением клиента» is a finding. Drop such agent responses during synthesis.
+
+Separately the agent returns a list of good decisions — what was done right. At least one, if there is anything to name.
 
 ## Severity
 
-| | В спеке | В diff |
+| | In a spec | In a diff |
 |---|---|---|
-| `blocker` | ведёт к переделке: неверная модель данных, невыполнимое требование, внутреннее противоречие | баг, уязвимость, потеря данных |
-| `major` | существенный пробел: не описан отказ, миграция, граница ответственности | архитектурная проблема, неверная логика |
-| `minor` | уточнение, экономящее вопросы на этапе плана | улучшение, некритично |
-| `nit` | формулировка | стиль, нейминг |
+| `blocker` | leads to rework: wrong data model, unfulfillable requirement, internal contradiction | bug, vulnerability, data loss |
+| `major` | significant gap: failure, migration or responsibility boundary not described | architectural problem, wrong logic |
+| `minor` | clarification that saves questions at the planning stage | improvement, non-critical |
+| `nit` | wording | style, naming |
 
-## Синтез
+## Synthesis
 
-1. **Дедуп.** Замечания об одном месте с одной сутью сливаются в одно. Авторы перечисляются через запятую, severity берётся максимальный, поле «правка» — самое конкретное из предложенных.
-2. **Конфликты.** Если два замечания требуют взаимоисключающих правок одного места — это не дефект, а развилка. Выноси парой в блок «Конфликты» с позицией каждого эксперта. Вердикт по конфликту выносит пользователь, а не оркестратор.
-3. **Лимиты.** Полностью показывай не больше 3 `blocker` и 5 `major` — самые тяжёлые. Всё остальное — и `blocker` с `major` сверх лимита, и все `minor` с `nit` — сворачивай в одну строку каждое под заголовком «Ниже порога». Ни одно замечание не выбрасывается, но отчёт нужен для решений, а не для объёма.
-4. **Нумерация** сохраняется от агентов: пользователь ссылается на `C2`, а не на «второе сверху».
+1. **Dedup.** Findings about the same place with the same substance merge into one. Authors are listed comma-separated, severity is the maximum, the «правка» field is the most specific of those proposed.
+2. **Conflicts.** If two findings demand mutually exclusive edits of one place — that is not a defect but a fork. Put them out as a pair in the «Конфликты» block with each expert's position. The verdict on a conflict is the user's, not the orchestrator's.
+3. **Limits.** Show in full no more than 3 `blocker` and 5 `major` — the heaviest. Everything else — `blocker` and `major` beyond the limit, and all `minor` and `nit` — collapse into one line each under the «Ниже порога» heading. No finding is thrown away, but the report is for decisions, not for volume.
+4. **Numbering** is kept from the agents: the user refers to `C2`, not to «второе сверху».
 
-## Общие правила
+## General rules
 
-- Ничего не пишет на диск, пока пользователь явно не принял замечания.
-- Не запускает тесты, линтеры и сборку. Если проверка нужна — выводит команду, которую пользователь запустит сам.
-- Не делает коммитов.
-- Не переходит между фазами режима без подтверждения там, где фаза этого требует.
-- При сомнении в severity выбирает более высокий.
+- Writes nothing to disk until the user has explicitly accepted the findings.
+- Does not run tests, linters or builds. If a check is needed — prints the command for the user to run.
+- Makes no commits.
+- Does not move between mode phases without confirmation where the phase requires it.
+- When in doubt about severity, picks the higher one.

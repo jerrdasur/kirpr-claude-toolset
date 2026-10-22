@@ -1,68 +1,68 @@
-# Режим: ревью спеки
+# Mode: spec review
 
-Критический разбор design-документа перед переходом к планированию. Заканчивается обновлённой спекой, а не отчётом.
+A critical examination of a design document before moving on to planning. Ends with an updated spec, not a report.
 
-## Определение артефакта
+## Determining the artifact
 
-1. Путь передан аргументом — используй его.
-2. Пути нет — возьми самый свежий файл из `docs/superpowers/specs/`. Если каталога нет или он пуст, спроси путь у пользователя.
-3. Кандидатов несколько и выбор неочевиден — покажи список и спроси.
+1. A path was passed as an argument — use it.
+2. No path — take the newest file in `docs/superpowers/specs/`. If the directory does not exist or is empty, ask the user for a path.
+3. Several candidates and the choice is not obvious — show the list and ask.
 
-## Фаза 1. Контекст
+## Phase 1. Context
 
-1. Прочитай спеку целиком.
-2. Прочитай `CLAUDE.md` репозитория, если он есть.
-3. Найди затронутый код: grep по ключевым терминам спеки — именам пакетов, типов, таблиц, эндпоинтов. Собери список релевантных путей, не больше 20.
-4. Если в спеке есть секция `## Review log` — прочитай её. Замечания, отклонённые ранее с причиной, повторно не поднимаются. Принятые ранее — проверяются: отражены ли они в текущем тексте.
-5. Покажи пользователю summary:
-   - тема спеки одной строкой;
-   - задетые пакеты и сервисы;
-   - что из упомянутого в спеке не найдено в коде;
-   - предыдущие прогоны панели, если есть.
+1. Read the spec in full.
+2. Read the repository's `CLAUDE.md` if it exists.
+3. Find the affected code: grep by the spec's key terms — package, type, table and endpoint names. Collect a list of relevant paths, no more than 20.
+4. If the spec has a `## Review log` section — read it. Findings rejected earlier with a reason are not raised again. Findings accepted earlier are checked: are they reflected in the current text.
+5. Show the user a summary:
+   - the spec's topic in one line;
+   - affected packages and services;
+   - what the spec mentions that was not found in the code;
+   - previous panel runs, if any.
 
-**Не переходи к фазе 2 без подтверждения пользователя.** Панель, запущенная по спеке в вакууме, выдаёт замечания про несуществующий код.
+**Do not move to Phase 2 without the user's confirmation.** A panel launched on a spec in a vacuum produces findings about nonexistent code.
 
-## Фаза 2. Панель
+## Phase 2. Panel
 
-Собери активную панель и запусти агентов по протоколу из `SKILL.md`. Режим — `спека`: агент использует блок «В спеке проверяет» своей персоны.
+Assemble the active panel and launch the agents per the protocol in `SKILL.md`. Mode — `спека`: the agent uses the «В спеке проверяет» block of its persona.
 
-Каждому агенту передай: путь к спеке, список релевантных путей из фазы 1, содержимое Review log, если он есть.
+Pass to every agent: the spec path, the list of relevant paths from Phase 1, the Review log content if it exists.
 
-## Фаза 3. Отчёт
+## Phase 3. Report
 
-Синтезируй по протоколу из `SKILL.md` и покажи отчёт:
+Synthesize per the protocol in `SKILL.md` and show the report:
 
-1. **Панель** — кто участвовал.
-2. **Удачные решения** — сводно, без разбивки по экспертам.
-3. **Замечания** — по убыванию severity, каждое с `id`, местом, сутью, последствием и предложенной правкой.
-4. **Конфликты** — пары взаимоисключающих замечаний с позицией каждого эксперта.
-5. **Ниже порога** — свёрнутые строки, если лимиты превышены.
+1. **Панель** — who took part.
+2. **Удачные решения** — combined, without a per-expert breakdown.
+3. **Замечания** — by descending severity, each with `id`, place, substance, consequence and the proposed edit.
+4. **Конфликты** — pairs of mutually exclusive findings with each expert's position.
+5. **Ниже порога** — collapsed lines, if the limits were exceeded.
 
-## Фаза 4. Разбор
+## Phase 4. Walkthrough
 
-Попроси пользователя ответить одной строкой в формате:
+Ask the user to answer in one line in the format:
 
     accept C2,S1; reject F3 — причина; ? P4
 
-- `accept` — правка будет применена.
-- `reject` — причина обязательна, она попадёт в Review log.
-- `?` — обсуждаем по одному, каждое до решения `accept` или `reject`.
+- `accept` — the edit will be applied.
+- `reject` — a reason is mandatory; it goes into the Review log.
+- `?` — discussed one at a time, each until an `accept` or `reject` decision.
 
-Конфликты требуют явного выбора стороны — принять оба замечания из пары нельзя.
+Conflicts require an explicit choice of a side — accepting both findings of a pair is not possible.
 
-Ответ не разобрался или упомянут id, которого нет в отчёте, — покажи, что именно не понял, и переспроси. Не додумывай и не применяй частично разобранный ответ: «accept all» и «все, кроме F3» — самые вероятные ответы на отчёт из дюжины замечаний, и оба выходят за пределы формата.
+If the answer did not parse, or mentions an id that is not in the report — show what exactly you did not understand and ask again. Do not guess and do not apply a partially parsed answer: «accept all» and «все, кроме F3» are the most likely answers to a report with a dozen findings, and both fall outside the format.
 
-Поштучный опрос по каждому замечанию не устраивай: при пятнадцати замечаниях это пятнадцать раундов, дороже самого ревью.
+Do not poll finding by finding: with fifteen findings that is fifteen rounds, more expensive than the review itself.
 
-## Фаза 5. Правки
+## Phase 5. Edits
 
-1. Применяй только принятые замечания, точечными правками. Спеку целиком не переписывай — пользователь согласовывал текст, а не его пересказ.
-2. Если правка требует решения, которого нет ни в замечании, ни в спеке, — спроси, не придумывай.
-3. Покажи diff изменений.
+1. Apply only the accepted findings, as targeted edits. Do not rewrite the spec as a whole — the user agreed on the text, not on a retelling of it.
+2. If an edit requires a decision that is neither in the finding nor in the spec — ask, do not invent.
+3. Show the diff of the changes.
 
-## Фаза 6. Журнал
+## Phase 6. Log
 
-Допиши в конец спеки секцию `## Review log` (или новый подраздел в существующую):
+Append a `## Review log` section to the end of the spec (or a new subsection to an existing one):
 
     ## Review log
 
@@ -72,10 +72,10 @@
     Отклонено: F3 — вынос в отдельный сервис. Причина: преждевременно,
     объём не оправдан.
 
-Дату бери из системного окружения, состав панели — фактический.
+Take the date from the system environment, the panel composition — the actual one.
 
-Отклонённые с причиной важнее принятых: следующий прогон читает журнал и не поднимает закрытые вопросы заново.
+Rejections with a reason matter more than acceptances: the next run reads the log and does not reopen closed questions.
 
-## Завершение
+## Completion
 
-Коммит не делай. Скажи пользователю, что спека обновлена и готова к переходу к планированию. `writing-plans` сам не вызывай.
+Do not commit. Tell the user the spec is updated and ready for planning. Do not invoke `writing-plans` yourself.
