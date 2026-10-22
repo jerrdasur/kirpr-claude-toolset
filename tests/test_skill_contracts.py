@@ -68,8 +68,17 @@ def assert_claude_adapter(testcase, command, skill):
     testcase.assertLessEqual(len(text.splitlines()), 12)
 
 
+OUTPUT_LANGUAGE_LINE = "Everything addressed to the user and everything written to files is in Russian."
+
+
 class TestGlobalSkillContracts(unittest.TestCase):
     FORBIDDEN = ("~/.claude/kirpr", ".Codex", "AskUserQuestion", "TodoWrite")
+
+    def test_every_skill_declares_output_language(self):
+        for name in ALL_SKILLS:
+            text = (ROOT / "skills" / name / "SKILL.md").read_text(encoding="utf-8")
+            with self.subTest(skill=name):
+                self.assertIn(OUTPUT_LANGUAGE_LINE, text)
 
     def test_all_skills_are_explicit(self):
         for skill in ALL_SKILLS:
