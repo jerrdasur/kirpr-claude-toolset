@@ -1,48 +1,48 @@
-# Шаблоны и правила декомпозиции
+# Decomposition templates and rules
 
-## Критические правила (общие для всех команд)
+## Critical rules (common to all commands)
 
-- **Один вопрос за раз.** Не задавай несколько вопросов в одном сообщении.
-- **Предлагай варианты.** Где возможно — давай пронумерованные варианты ответа.
-- **Покажи перед записью.** Не записывай файл, не показав его содержимое пользователю. Для `source.md`, `research.md` и `SOLUTION.md` достаточно показа; для файлов Фазы 6 нужно явное «да». Исключение — `.context.md`: это кэш, он пишется без показа.
-- **Кодовая база — источник правды.** Если задача описывает путь/структуру, которой нет в коде — это `критично`.
-- **Каждое утверждение проверено.** По коду, по данным (метрики, логи, алерты) или по документации и исходникам вендора. Непроверенное помечается «подтвердить на dev».
-- **Не изобретай проблемы.** Если задача чётко написана и соответствует коду — не нужно искать проблемы ради отчёта.
-- **Используй шаблоны ниже.** Новые секции и файлы — по этим шаблонам.
-
----
-
-## Загрузка контекста декомпозиции
-
-Паттерн загрузки для `$kirpr-tasks-review` и `$kirpr-tasks-adapt` в Codex или `/kirpr:tasks-review` и `/kirpr:tasks-adapt` в Claude Code:
-
-### Вариант A: `.context.md` существует (быстрый путь)
-1. Прочитай `{dir}/.context.md` — кэш контекста из прошлой сессии.
-2. Прочитай `{dir}/SOLUTION.md` и `{dir}/00-overview.md`.
-3. Дальнейшие файлы — по необходимости (зависит от scope команды); факты и источники — в `{dir}/research.md`.
-4. **Не запрашивай трекер API** — данные уже в `.context.md`. Если нужны детали описания из трекера — читай `{dir}/source.md`.
-
-### Вариант B: `.context.md` не существует (fallback)
-1. Прочитай `{dir}/source.md`, `{dir}/SOLUTION.md` и `{dir}/00-overview.md`.
-2. Прочитай все файлы `{dir}/*.md`.
-3. Прочитай `~/.config/kirpr/tracker.md` для определения скрипта трекера. Загрузи данные задачи.
-4. Сообщи пользователю: "Файл `.context.md` не найден — загружаю полный контекст."
+- **One question at a time.** Do not ask several questions in one message.
+- **Offer options.** Where possible, give numbered answer options.
+- **Show before writing.** Do not write a file without showing its content to the user. For `source.md`, `research.md` and `SOLUTION.md` showing is enough; files of Phase 6 need an explicit «да». Exception — `.context.md`: it is a cache and is written without showing.
+- **The codebase is the source of truth.** If a task describes a path/structure that does not exist in the code — that is `критично`.
+- **Every claim is verified.** Against code, data (metrics, logs, alerts) or the vendor's documentation and sources. Anything unverified is marked «подтвердить на dev».
+- **Do not invent problems.** If a task is clearly written and matches the code — do not look for findings for the sake of a report.
+- **Use the templates below.** New sections and files follow these templates.
 
 ---
 
-## Правила нейминга файлов
+## Loading decomposition context
 
-- **Директория:** lowercase номер задачи (например `sas-200/`)
-- **Источник:** `source.md`
-- **Разведка:** `research.md`
-- **Решение:** `SOLUTION.md`
-- **Обзор:** `00-overview.md`
-- **Задачи:** `NN-service.md`, где `NN` — порядковый номер в очередности деплоя (01, 02…), `service` — сервис или репозиторий в kebab-case. Примеры: `01-scansrv.md`, `02-upload-callback.md`, `03-devops.md`.
-- **Язык файлов:** имена на английском, содержимое на русском
+Loading pattern for `$kirpr-tasks-review` and `$kirpr-tasks-adapt` in Codex, or `/kirpr:tasks-review` and `/kirpr:tasks-adapt` in Claude Code:
+
+### Option A: `.context.md` exists (fast path)
+1. Read `{dir}/.context.md` — the context cache from the previous session.
+2. Read `{dir}/SOLUTION.md` and `{dir}/00-overview.md`.
+3. Further files as needed (depends on the command's scope); facts and sources are in `{dir}/research.md`.
+4. **Do not query the tracker API** — the data is already in `.context.md`. If you need details of the tracker description — read `{dir}/source.md`.
+
+### Option B: `.context.md` does not exist (fallback)
+1. Read `{dir}/source.md`, `{dir}/SOLUTION.md` and `{dir}/00-overview.md`.
+2. Read all `{dir}/*.md` files.
+3. Read `~/.config/kirpr/tracker.md` to determine the tracker script. Load the task data.
+4. Tell the user: "Файл `.context.md` не найден — загружаю полный контекст."
 
 ---
 
-## Шаблон source.md
+## File naming
+
+- **Directory:** lowercase task number (e.g. `sas-200/`)
+- **Source:** `source.md`
+- **Research:** `research.md`
+- **Solution:** `SOLUTION.md`
+- **Overview:** `00-overview.md`
+- **Tasks:** `NN-service.md`, where `NN` is the ordinal in deployment order (01, 02…) and `service` is the service or repository in kebab-case. Examples: `01-scansrv.md`, `02-upload-callback.md`, `03-devops.md`.
+- **File language:** names in English, content in Russian
+
+---
+
+## source.md template
 
 ```markdown
 # {Название задачи}
@@ -52,9 +52,9 @@
 
 ---
 
-## Шаблон research.md
+## research.md template
 
-Факты, не мнения. Каждый факт о коде — с `файл:функция`, каждый факт о проде — с источником (метрика, алерт, лог), каждый факт о вендоре — со ссылкой. Обоснования решений живут здесь, а не в `SOLUTION.md`.
+Facts, not opinions. Every fact about code comes with `file:function`, every fact about production with a source (metric, alert, log), every fact about a vendor with a link. Justifications of decisions live here, not in `SOLUTION.md`.
 
 ```markdown
 # {Номер задачи} — Research
@@ -81,9 +81,9 @@
 
 ---
 
-## Шаблон SOLUTION.md
+## SOLUTION.md template
 
-Формулировка проблемы, одна фраза механизма и изменения по каждому сервису. В разделах по сервисам каждое предложение — либо изменение, либо решение внутри изменения. Без разделов «Принцип», «Эффект», «Что не меняем», «Порядок деплоя», «Проверить», без how-to и без фраз «как сейчас». Раздел «Проблема» — единственное место, где описывается текущее поведение; чистка по предложениям его не касается.
+Problem statement, one sentence for the mechanism, and the changes per service. In the per-service sections every sentence is either a change or a decision inside a change. No «Принцип», «Эффект», «Что не меняем», «Порядок деплоя», «Проверить» sections, no how-to, no «как сейчас» phrases. The «Проблема» section is the only place where current behavior is described; the sentence-by-sentence cleanup does not touch it.
 
 ```markdown
 # {Номер задачи} — Техническое решение
@@ -105,11 +105,11 @@
 - {Изменение.}
 ```
 
-Проверка перед записью, по каждому предложению разделов по сервисам (раздел «Проблема» не проверяется): это изменение? это решение внутри изменения? повторяет ли другое предложение? правда ли это? Если фразу удалить и разработчик сделает то же самое — удалить.
+Check before writing, for every sentence of the per-service sections (the «Проблема» section is not checked): is it a change? is it a decision inside a change? does it repeat another sentence? is it true? If a sentence can be deleted and the developer would do the same thing — delete it.
 
 ---
 
-## Шаблон 00-overview.md
+## 00-overview.md template
 
 ```markdown
 # {Название задачи} — Обзор
@@ -134,7 +134,7 @@
 
 ---
 
-## Шаблон задачи NN-service.md
+## Task file template (NN-service.md)
 
 ```markdown
 # {сервис}: {название}
@@ -148,24 +148,24 @@
 - {Проверка.}
 ```
 
-**Правила для содержимого задач:**
-- Одна задача — один сервис или репозиторий — один MR.
-- Заголовок — `{сервис}: {название}` без номеров, оценок и меток в скобках.
-- 3–6 шагов, каждый начинается с глагола и называет место в коде (RPC, функция, файл) и решение, которое нельзя восстановить из `SOLUTION.md` неоднозначно.
-- «Проверить» — проверяемые условия, включая отрицательные сценарии и то, что подтверждается только на dev.
-- Без метаданных (SP, стадия, зависимости — это поля трекера), без обоснований, без разделов «Техническое решение / AC / Миграции».
-- Идентификаторы в бэктиках точно как в коде.
+**Rules for task content:**
+- One task — one service or repository — one MR.
+- Heading is `{сервис}: {название}` without numbers, estimates or bracketed labels.
+- 3–6 steps, each starting with a verb and naming the place in the code (RPC, function, file) and the decision that cannot be unambiguously reconstructed from `SOLUTION.md`.
+- «Проверить» lists verifiable conditions, including negative scenarios and what can only be confirmed on dev.
+- No metadata (SP, stage, dependencies — those are tracker fields), no justifications, no «Техническое решение / AC / Миграции» sections.
+- Identifiers in backticks exactly as in the code.
 
 ---
 
-## Шаблон .context.md
+## .context.md template
 
-Файл `.context.md` создаётся в конце Фазы 6 `$kirpr-tasks-decompose` в Codex или `/kirpr:tasks-decompose` в Claude Code и кэширует контекст сессии.
+The `.context.md` file is created at the end of Phase 6 of `$kirpr-tasks-decompose` in Codex or `/kirpr:tasks-decompose` in Claude Code and caches the session context.
 
-**Правила:**
-- Файл создаётся автоматически, не показывается пользователю для ревью (исключение из правила «Покажи перед записью»).
-- Файл добавлен в `.gitignore` — это кэш, не артефакт.
-- При адаптации через `$kirpr-tasks-adapt` в Codex или `/kirpr:tasks-adapt` в Claude Code файл обновляется, а не пересоздаётся.
+**Rules:**
+- The file is created automatically and is not shown to the user for review (exception to the «Show before writing» rule).
+- The file is in `.gitignore` — it is a cache, not an artifact.
+- On adaptation via `$kirpr-tasks-adapt` in Codex or `/kirpr:tasks-adapt` in Claude Code the file is updated, not recreated.
 
 ```markdown
 # .context.md — Кэш контекста декомпозиции {Номер задачи}
@@ -255,9 +255,9 @@
 
 ---
 
-## Чеклист верификации
+## Verification checklist
 
-Используется в `$kirpr-tasks-decompose` (Фаза 5) и `$kirpr-tasks-adapt` (Фаза D) в Codex или `/kirpr:tasks-decompose` (Фаза 5) и `/kirpr:tasks-adapt` (Фаза D) в Claude Code:
+Used in `$kirpr-tasks-decompose` (Phase 5) and `$kirpr-tasks-adapt` (Phase D) in Codex, or `/kirpr:tasks-decompose` (Phase 5) and `/kirpr:tasks-adapt` (Phase D) in Claude Code:
 
 ```
 Чеклист завершённости:
@@ -270,52 +270,52 @@
 [ ] Отвергнутые варианты зафиксированы в research.md одной строкой с фактом
 ```
 
-Если хотя бы один пункт не пройден — **вернись к правкам**.
+If at least one item is not passed — **return to editing**.
 
 ---
 
-## Рубрика Quality Scoring
+## Quality scoring rubric
 
-Используется в `$kirpr-tasks-review` в Codex или `/kirpr:tasks-review` в Claude Code для оценки каждой задачи. 5 критериев, 0-2 балла каждый = max 10.
+Used in `$kirpr-tasks-review` in Codex or `/kirpr:tasks-review` in Claude Code to score every task. 5 criteria, 0–2 points each = max 10.
 
-**Порог качества: 8/10.** Файлы с score < 8 требуют итерации.
+**Quality threshold: 8/10.** Files with score < 8 require iteration.
 
-### К1: Конкретность (0-2)
+### K1: Specificity (К1, конкретность; 0–2)
 
-Оценивает однозначность формулировок и отсутствие расплывчатых выражений.
+Scores unambiguity of wording and absence of vague expressions.
 
-- **0** — Формулировки абстрактные ("добавить логику обработки", "реализовать валидацию"). Разработчик вынужден интерпретировать scope.
-- **1** — Основные шаги конкретны, но есть пробелы (1-2 места с "и т.д.", "аналогично", "как сейчас").
-- **2** — Каждый шаг однозначен. Два разработчика реализовали бы одинаково.
+- **0** — Wording is abstract ("добавить логику обработки", "реализовать валидацию"). The developer has to interpret the scope.
+- **1** — Main steps are specific but there are gaps (1–2 places with "и т.д.", "аналогично", "как сейчас").
+- **2** — Every step is unambiguous. Two developers would implement it the same way.
 
-### К2: Полнота решений (0-2)
+### K2: Completeness of decisions (К2, полнота решений; 0–2)
 
-Оценивает, названы ли в шагах решения, которые определяют реализацию: имена RPC и сигнатуры, условия ветвления, границы (что не меняем внутри изменения), источники данных.
+Scores whether the steps name the decisions that determine the implementation: RPC names and signatures, branching conditions, boundaries (what is not changed inside the change), data sources.
 
-- **0** — Решений нет, только направление ("сообщать о падении").
-- **1** — Ключевые решения названы, но часть разработчику придётся принимать самому.
-- **2** — Все решения, которые нельзя восстановить из `SOLUTION.md` однозначно, названы в шагах. Лишних деталей (how-to, обоснований) нет.
+- **0** — No decisions, only a direction ("сообщать о падении").
+- **1** — Key decisions are named, but the developer will have to make some on their own.
+- **2** — Every decision that cannot be unambiguously reconstructed from `SOLUTION.md` is named in the steps. No extra details (how-to, justifications).
 
-### К3: Проверяемость (0-2)
+### K3: Verifiability (К3, проверяемость; 0–2)
 
-Оценивает список «Проверить».
+Scores the «Проверить» list.
 
-- **0** — Списка нет или условия непроверяемые ("всё работает").
-- **1** — Условия проверяемые, но нет отрицательных сценариев или того, что подтверждается только на dev.
-- **2** — Каждое условие — «вход → ожидаемый результат», есть отрицательные сценарии и граничные случаи.
+- **0** — No list, or conditions are unverifiable ("всё работает").
+- **1** — Conditions are verifiable, but there are no negative scenarios or no items that can only be confirmed on dev.
+- **2** — Every condition is «вход → ожидаемый результат», with negative scenarios and edge cases.
 
-### К4: Самодостаточность (0-2)
+### K4: Self-sufficiency (К4, самодостаточность; 0–2)
 
-Оценивает, может ли разработчик выполнить задачу по этому файлу и `SOLUTION.md`, не читая остальные.
+Scores whether a developer can complete the task from this file and `SOLUTION.md` without reading the others.
 
-- **0** — Нужно читать другие задачи или переписку, чтобы понять scope.
-- **1** — Scope ясен, но часть решений приходится искать в других задачах или в `research.md`.
-- **2** — Файл вместе с `SOLUTION.md` достаточен.
+- **0** — Other tasks or correspondence must be read to understand the scope.
+- **1** — The scope is clear, but some decisions have to be looked up in other tasks or in `research.md`.
+- **2** — The file together with `SOLUTION.md` is sufficient.
 
-### К5: Соответствие кодовой базе (0-2)
+### K5: Codebase conformance (К5, соответствие кодовой базе; 0–2)
 
-Оценивает совпадение описанных путей, структур и конвенций с реальным кодом.
+Scores whether the described paths, structures and conventions match the real code.
 
-- **0** — 2+ несуществующих путей/пакетов, или противоречие с реальными конвенциями.
-- **1** — Пути существуют, но стиль (naming, тесты, паттерны) не совпадает с существующим кодом.
-- **2** — Все пути, структуры и конвенции соответствуют кодовой базе.
+- **0** — 2+ nonexistent paths/packages, or a contradiction with real conventions.
+- **1** — Paths exist, but the style (naming, tests, patterns) does not match the existing code.
+- **2** — All paths, structures and conventions match the codebase.

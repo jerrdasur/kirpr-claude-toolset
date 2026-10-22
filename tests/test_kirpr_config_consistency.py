@@ -29,18 +29,18 @@ class TestNoLegacyFormat(unittest.TestCase):
 class TestPhaseReferences(unittest.TestCase):
     def test_skill_phase_numbers_exist_in_workflow(self):
         workflow = (CONFIG / "workflow.md").read_text(encoding="utf-8")
-        defined = set(re.findall(r"^## Фаза (\d+)", workflow, re.MULTILINE))
+        defined = set(re.findall(r"^## Phase (\d+)", workflow, re.MULTILINE))
         referenced = set()
         for path in SKILLS + [CONFIG / "templates.md"]:
             body = _body_without_headings(path.read_text(encoding="utf-8"))
-            referenced |= set(re.findall(r"Фаз[аы] (\d+)", body))
+            referenced |= set(re.findall(r"Phase (\d+)", body))
         self.assertTrue(referenced <= defined, referenced - defined)
 
 
 class TestContextLoading(unittest.TestCase):
     def test_loading_section_mentions_all_artifacts(self):
         text = (CONFIG / "templates.md").read_text(encoding="utf-8")
-        section = text.split("## Загрузка контекста декомпозиции", 1)[1].split("\n---", 1)[0]
+        section = text.split("## Loading decomposition context", 1)[1].split("\n---", 1)[0]
         for name in ("source.md", "research.md", "SOLUTION.md", "00-overview.md"):
             with self.subTest(name=name):
                 self.assertIn(name, section)
@@ -49,12 +49,12 @@ class TestContextLoading(unittest.TestCase):
 class TestTemplates(unittest.TestCase):
     def test_solution_template_has_problem_section(self):
         text = (CONFIG / "templates.md").read_text(encoding="utf-8")
-        section = text.split("## Шаблон SOLUTION.md", 1)[1].split("\n---", 1)[0]
-        self.assertIn("## Проблема", section)
+        section = text.split("## SOLUTION.md template", 1)[1].split("\n---", 1)[0]
+        self.assertIn("## Проблема", section)  # template body stays Russian
 
     def test_overview_template_has_external_dependencies(self):
         text = (CONFIG / "templates.md").read_text(encoding="utf-8")
-        section = text.split("## Шаблон 00-overview.md", 1)[1].split("\n---", 1)[0]
+        section = text.split("## 00-overview.md template", 1)[1].split("\n---", 1)[0]
         self.assertIn("## Внешние зависимости", section)
 
 

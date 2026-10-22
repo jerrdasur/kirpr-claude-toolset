@@ -1,4 +1,4 @@
-# Конфигурация трекера задач
+# Task tracker configuration
 
 ## Активный трекер
 
@@ -9,17 +9,17 @@ URL: {{TRACKER_ISSUE_URL}}
 
 {{TRACKER_ENV_VARS}}
 
-## Альтернативные трекеры
+## Alternative trackers
 
 ### YouTrack
 
-Переменные окружения:
-- `YOUTRACK_URL` — базовый URL (например `https://youtrack.example.com`)
-- `YOUTRACK_TOKEN` — Bearer-токен для API YouTrack (обязателен)
+Environment variables:
+- `YOUTRACK_URL` — base URL (e.g. `https://youtrack.example.com`)
+- `YOUTRACK_TOKEN` — Bearer token for the YouTrack API (required)
 
 ### Jira
 
-Переменные окружения:
-- `JIRA_URL` — базовый URL (например `https://yourcompany.atlassian.net`)
-- `JIRA_TOKEN` — API-токен (обязателен)
-- `JIRA_EMAIL` — email для Jira Cloud (опционален, для basic auth)
+Environment variables:
+- `JIRA_URL` — base URL (e.g. `https://yourcompany.atlassian.net`)
+- `JIRA_TOKEN` — API token (required)
+- `JIRA_EMAIL` — email for Jira Cloud (optional, for basic auth)

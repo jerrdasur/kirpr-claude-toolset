@@ -1,81 +1,81 @@
-# Workflow декомпозиции: фазы
+# Decomposition workflow: phases
 
-Цель — не список задач, а проверенное техническое решение, из которого задачи следуют сами. Порядок фаз обязателен: решение без разведки и формулировки проблемы — догадка.
+The goal is not a list of tasks but a verified technical solution from which the tasks follow on their own. The order of phases is mandatory: a solution without research and a problem statement is a guess.
 
-## Фаза 1: Fetch данных из трекера
+## Phase 1: Fetch from the tracker
 
-1. Прочитай `~/.local/share/kirpr/config/tracker-runtime.md` и строго выполни его инструкцию выбора runtime для операции fetch. Она читает `~/.config/kirpr/tracker.md` и определяет скрипт для текущего трекера.
-2. Выполни скрипт с номером задачи — он выведет summary, description, comments.
-3. Если скрипт вернул ошибку — **прерви выполнение** и сообщи пользователю.
-4. Из описания и комментариев извлеки номера связанных задач и загрузи их тем же скриптом (до 50). Проверь, нет ли уже дочерних задач в трекере.
-5. Покажи пользователю: название, описание, связанные задачи, найденные дочерние задачи в трекере.
-6. Создай директорию задачи (lowercase номер, например `sas-200/`) и `source.md` по шаблону из `~/.local/share/kirpr/config/templates.md`.
+1. Read `~/.local/share/kirpr/config/tracker-runtime.md` and follow its runtime-selection instruction for the fetch operation exactly. It reads `~/.config/kirpr/tracker.md` and determines the script for the current tracker.
+2. Run the script with the task number — it prints summary, description and comments.
+3. If the script returned an error — **stop** and tell the user.
+4. Extract the numbers of related tasks from the description and comments and load them with the same script (up to 50). Check whether child issues already exist in the tracker.
+5. Show the user: title, description, related tasks, child issues found in the tracker.
+6. Create the task directory (lowercase number, e.g. `sas-200/`) and `source.md` from the template in `~/.local/share/kirpr/config/templates.md`.
 
-Описание задачи — гипотеза автора, а не факт. Его утверждения («висит час», «падает из-за X») проверяются в Фазе 2 наравне с остальными.
+The task description is the author's hypothesis, not a fact. Its claims («висит час», «падает из-за X») are verified in Phase 2 like everything else.
 
-## Фаза 2: Разведка
+## Phase 2: Research
 
-Факт, который можно добыть инструментом, добывается инструментом. Пользователю задаются только вопросы о том, чего нет ни в коде, ни в данных, ни в документации — по одному, после разведки, а не вместо неё.
+A fact that a tool can obtain is obtained with a tool. The user is asked only about what exists neither in code, nor in data, nor in documentation — one question at a time, after the research, not instead of it.
 
-**2a — Код всех участников, сквозняком.** Определи по описанию сервисы и репозитории на пути сценария и прочитай их целиком, а не по заголовкам: точки входа (RPC, CLI, cron), путь данных от входа до хранилища, статусные машины и допустимые переходы, обработку ошибок и повторов, существующие тесты и фикстуры, инфраструктурные спеки (оркестрация, CI, алертинг), генерируемые артефакты (клиенты, схемы API). Фиксируй `файл:функция` для каждого факта. Проверь, что ветки репозиториев актуальны.
+**2a — Code of every participant, end to end.** From the description, identify the services and repositories on the scenario's path and read them in full, not by headings: entry points (RPC, CLI, cron), the data path from entry to storage, state machines and allowed transitions, error handling and retries, existing tests and fixtures, infrastructure specs (orchestration, CI, alerting), generated artifacts (clients, API schemas). Record `file:function` for every fact. Check that repository branches are current.
 
-**2b — Первоисточники по поведению в проде.** Собери алерты, логи и метрики по затронутым компонентам за инцидент (если он был) и за репрезентативный период (например 30 дней). Если данных по проду нет или задача их не касается — запиши это в `research.md` явно, а не пропускай шаг молча. Построй таблицу «время / компонент / событие» и количественную картину: сколько раз, какие исходы, какие комбинации. Этого шага обычно хватает, чтобы подтвердить или опровергнуть премиссу задачи.
+**2b — Primary sources on production behavior.** Collect alerts, logs and metrics for the affected components for the incident (if there was one) and for a representative period (e.g. 30 days). If there is no production data or the task does not concern it — state that explicitly in `research.md` rather than skipping the step silently. Build a «время / компонент / событие» table and a quantitative picture: how many times, which outcomes, which combinations. This step is usually enough to confirm or refute the task's premise.
 
-**2c — Вендор и prior art.** Документация и исходники используемых систем (оркестратор, БД, библиотеки) по затронутым механизмам; известные issue и баги; как ту же проблему решают аналоги в других экосистемах. Проверяй заявленные возможности, а не предполагай их.
+**2c — Vendor and prior art.** Documentation and source code of the systems in use (orchestrator, DB, libraries) for the affected mechanisms; known issues and bugs; how analogues in other ecosystems solve the same problem. Verify claimed capabilities, do not assume them.
 
-**2d — Вопросы пользователю.** Только о том, что не выяснить самому: границы ответственности между слоями, кому нужен результат, что считается приемлемым. По одному вопросу, следующий зависит от ответа.
+**2d — Questions to the user.** Only about what cannot be found out on your own: responsibility boundaries between layers, who needs the result, what counts as acceptable. One question at a time; the next depends on the answer.
 
-**Артефакт:** `research.md` в директории задачи по шаблону из `templates.md`: как устроено сейчас (с `файл:функция`), что показали данные (таблицы), что говорят вендор и prior art (со ссылками), что осталось непроверенным. Покажи пользователю и дождись замечаний.
+**Artifact:** `research.md` in the task directory, from the template in `templates.md`: how it works now (with `file:function`), what the data showed (tables), what the vendor and prior art say (with links), what remains unverified. Show it to the user and wait for remarks.
 
-## Фаза 3: Формулировка проблемы
+## Phase 3: Problem statement
 
-**Перед этой фазой** прочитай `~/.local/share/kirpr/config/style-examples.md` — там эталонные формулировка проблемы, `SOLUTION.md`, тексты задач и фрагмент `research.md`.
+**Before this phase** read `~/.local/share/kirpr/config/style-examples.md` — it holds reference examples of a problem statement, a `SOLUTION.md`, task texts and a `research.md` fragment.
 
-Один абзац или меньше, в терминах контракта или инварианта между компонентами: «между A и B одно сообщение X, исход Y передать нечем». Следствия — задержки, алерты, повторы, лишняя нагрузка — в формулировку не входят: это симптомы.
+One paragraph or less, in terms of a contract or invariant between components: «между A и B одно сообщение X, исход Y передать нечем». Consequences — delays, alerts, retries, extra load — are not part of the statement: they are symptoms.
 
-Проверки:
-- Если премисса задачи фактами не подтвердилась — скажи это явно и сформулируй проблему по фактам, не по описанию.
-- Если формулировку нельзя прочитать без знания кода — упрости.
-- Если пользователь спрашивает «суть в чём?» — формулировка расплывчата, переделай.
+Checks:
+- If the task's premise was not confirmed by facts — say so explicitly and state the problem from the facts, not from the description.
+- If the statement cannot be read without knowing the code — simplify.
+- If the user asks «суть в чём?» — the statement is vague, redo it.
 
-Согласуй формулировку с пользователем до перехода к решению. Запиши её разделом «Проблема» в `SOLUTION.md`.
+Agree the statement with the user before moving to the solution. Write it as the «Проблема» section of `SOLUTION.md`.
 
-## Фаза 4: Решение
+## Phase 4: Solution
 
-**4a — Варианты.** Перечисли варианты коротко, с фактами за и против из Фазы 2, и назови рекомендуемый. Вариант, которому противоречит факт, не предлагается.
+**4a — Options.** List the options briefly, with facts for and against from Phase 2, and name the recommended one. An option contradicted by a fact is not offered.
 
-**4b — Правила решения.**
-- Факты и вердикты разделены: компонент, который наблюдает событие, сообщает факт; решение принимает компонент-владелец состояния по авторитетному источнику. Имя сообщения несёт семантику факта, а не вердикта.
-- Границы ответственности, принятые пользователем, не нарушаются: механизм, принадлежащий другому слою (повторы, оркестрация), не дублируется и не обходится, пока есть решение внутри своего слоя.
-- Один сервис — одна задача — один MR.
-- Каждое утверждение проверено по коду, по данным или по исходникам вендора. Непроверенное помечается «подтвердить на dev», а не выдаётся за факт.
+**4b — Solution rules.**
+- Facts and verdicts are separated: the component that observes an event reports the fact; the decision is made by the component that owns the state, from the authoritative source. A message name carries the semantics of a fact, not a verdict.
+- Responsibility boundaries accepted by the user are not violated: a mechanism that belongs to another layer (retries, orchestration) is neither duplicated nor bypassed while a solution exists inside its own layer.
+- One service — one task — one MR.
+- Every claim is verified against code, data or vendor sources. Anything unverified is marked «подтвердить на dev», not presented as a fact.
 
-**4c — Текст решения.** Одна фраза механизма плюс изменения по каждому сервису. Без разделов «Принцип», «Эффект», «Что не меняем», «Порядок деплоя», «Проверить» и без how-to. Шаблон — в `templates.md`.
+**4c — Solution text.** One sentence for the mechanism plus the changes per service. No «Принцип», «Эффект», «Что не меняем», «Порядок деплоя», «Проверить» sections and no how-to. The template is in `templates.md`.
 
-**4d — Критика.** Покажи решение. На каждое возражение пользователя возвращайся к формулировке проблемы, а не защищай вариант; если возражение опирается на факт — вариант отбрасывается. Если пользователь просит обосновать — приводи факты и таблицу компромиссов, не меняй позицию молча.
+**4d — Critique.** Show the solution. On every objection from the user, return to the problem statement rather than defending the option; if the objection rests on a fact, the option is discarded. If the user asks for justification — give facts and a trade-off table, do not change position silently.
 
-**4e — Чистка по предложениям.** Для каждого предложения разделов по сервисам (раздел «Проблема» не трогай): это изменение? это решение внутри изменения? повторяет ли оно другое предложение? правда ли оно? Если фразу можно удалить и разработчик сделает то же самое — удали. «Как сейчас» и пересказ существующего кода удаляются всегда.
+**4e — Sentence-by-sentence cleanup.** For every sentence in the per-service sections (leave the «Проблема» section alone): is it a change? is it a decision inside a change? does it repeat another sentence? is it true? If a sentence can be deleted and the developer would do the same thing — delete it. «Как сейчас» and retellings of existing code are always deleted.
 
-**Артефакт:** `SOLUTION.md`. Согласуй с пользователем. Если решение заменило прежнее — старое не описывается, в `research.md` одной строкой фиксируется, что и почему отвергнуто.
+**Artifact:** `SOLUTION.md`. Agree it with the user. If the solution replaced an earlier one — the old one is not described; `research.md` records in one line what was rejected and why.
 
-## Фаза 5: Декомпозиция
+## Phase 5: Decomposition
 
-1. По одной задаче на сервис или репозиторий из `SOLUTION.md`. Если изменений в сервисе несколько и они безопасны по отдельности — всё равно одна задача, один MR.
-2. Текст задачи — краткий формат из `templates.md`: заголовок `{сервис}: {название}`, 3–6 шагов-глаголов, список «Проверить». Без метаданных, оценок и обоснований.
-3. Порядок задач задаёт очередность деплоя. Зависимость в трекере заводится только там, где она техническая (клиент после сервера).
-4. Покажи все тексты сразу, согласуй правки.
-5. Пройди чеклист из `templates.md` и покажи результат. Не пройден — вернись к правкам.
+1. One task per service or repository from `SOLUTION.md`. If a service has several changes that are safe on their own — still one task, one MR.
+2. Task text uses the short format from `templates.md`: heading `{сервис}: {название}`, 3–6 verb steps, a «Проверить» list. No metadata, estimates or justifications.
+3. Task order defines deployment order. A tracker dependency is created only where it is technical (client after server).
+4. Show all texts at once, agree the edits.
+5. Go through the checklist from `templates.md` and show the result. Not passed — return to editing.
 
-## Фаза 6: Генерация файлов
+## Phase 6: Generate files
 
-Эталоны формата — в `~/.local/share/kirpr/config/style-examples.md` (прочитан перед Фазой 3).
+Format references are in `~/.local/share/kirpr/config/style-examples.md` (read before Phase 3).
 
-Создай в директории задачи по шаблонам из `templates.md`:
-1. `source.md` (если не создан).
-2. `research.md` (если не записан в Фазе 2).
-3. `SOLUTION.md` (если не записан в Фазе 4) — формулировка проблемы и решение.
-4. `00-overview.md` — порядок задач, зависимости, карта файлов.
-5. `NN-service.md` — по одному файлу на задачу.
-6. `.context.md` — кэш контекста сессии. **Обязательный шаг**: без него `$kirpr-tasks-adapt` и `$kirpr-tasks-review` в Codex или `/kirpr:tasks-adapt` и `/kirpr:tasks-review` в Claude Code не смогут использовать быстрый путь загрузки контекста.
+Create in the task directory, from the templates in `templates.md`:
+1. `source.md` (if not created yet).
+2. `research.md` (if not written in Phase 2).
+3. `SOLUTION.md` (if not written in Phase 4) — problem statement and solution.
+4. `00-overview.md` — task order, dependencies, file map.
+5. `NN-service.md` — one file per task.
+6. `.context.md` — the session context cache. **Mandatory step**: without it `$kirpr-tasks-adapt` and `$kirpr-tasks-review` in Codex, or `/kirpr:tasks-adapt` and `/kirpr:tasks-review` in Claude Code, cannot use the fast context-loading path.
 
-Покажи список созданных файлов. Проверь, что `.context.md` создан.
+Show the list of created files. Check that `.context.md` was created.
