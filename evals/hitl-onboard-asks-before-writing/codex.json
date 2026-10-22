@@ -1,0 +1,6 @@
+{"prompt": "$kirpr-onboard",
+ "env": {"EVAL_KIRPR_FIXTURES": ".eval-tracker"},
+ "checks": {"last_message_regex": ["Записать .*workspace\\.md"],
+            "files_absent": [".kirpr/workspace.md"],
+            "commands_absent": ["kirpr_memory\\.py refresh(?!.*--dry-run)"],
+            "requests_log_empty": true}}

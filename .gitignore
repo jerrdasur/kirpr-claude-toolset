@@ -8,3 +8,4 @@ __pycache__/
 .worktrees/
 CLAUDE.md
 AGENTS.md
+evals/results/

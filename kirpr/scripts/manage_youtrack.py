@@ -316,6 +316,10 @@ def build_parser():
 
 
 def make_client():
+    from kirpr_fixture_transport import FIXTURE_BASE_URL, FIXTURE_TOKEN, transport_from_env
+    transport = transport_from_env()
+    if transport is not None:
+        return YouTrackClient(FIXTURE_BASE_URL, FIXTURE_TOKEN, transport=transport)
     base_url = os.environ.get("YOUTRACK_URL")
     token = os.environ.get("YOUTRACK_TOKEN")
     if not base_url or not token:

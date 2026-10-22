@@ -26,7 +26,7 @@ KIRPR_CONFIG_FILES=(
 KIRPR_PROMPTS=(text.md)
 KIRPR_SCRIPTS=(
     create_youtrack.py fetch_jira.py fetch_youtrack.py manage_jira.py
-    manage_youtrack.py kirpr_memory.py
+    manage_youtrack.py kirpr_memory.py kirpr_fixture_transport.py
 )
 
 KIRPR_TARGET="${KIRPR_TARGET:-}"

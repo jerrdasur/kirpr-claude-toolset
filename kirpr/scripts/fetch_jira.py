@@ -14,10 +14,12 @@ import base64
 import urllib.request
 import urllib.error
 
+from kirpr_fixture_transport import FIXTURE_BASE_URL, FIXTURE_TOKEN, transport_from_env
+
 FIELDS = "summary,description,reporter,timetracking,comment,issuelinks,subtasks"
 
 
-def fetch_issue(issue_id: str, base_url: str, token: str, email: str | None) -> dict:
+def fetch_issue(issue_id: str, base_url: str, token: str, email: str | None, transport=None) -> dict:
     url = f"{base_url}/rest/api/2/issue/{issue_id}?fields={FIELDS}&expand=changelog"
 
     if email:
@@ -28,14 +30,17 @@ def fetch_issue(issue_id: str, base_url: str, token: str, email: str | None) -> 
         # Jira Server: bearer token
         auth_header = f"Bearer {token}"
 
-    req = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/json",
-            "Authorization": auth_header,
-            "Content-Type": "application/json",
-        },
-    )
+    headers = {
+        "Accept": "application/json",
+        "Authorization": auth_header,
+        "Content-Type": "application/json",
+    }
+    if transport is not None:
+        status, raw = transport("GET", url, headers, None)
+        if status >= 400:
+            raise RuntimeError(f"HTTP {status}")
+        return json.loads(raw.decode())
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read().decode())
 
@@ -140,23 +145,14 @@ def main():
         sys.exit(1)
 
     issue_id = sys.argv[1].strip()
-    base_url = os.environ.get("JIRA_URL")
-    if not base_url:
-        print("Error: JIRA_URL environment variable is not set.", file=sys.stderr)
-        print("Example: export JIRA_URL=https://yourcompany.atlassian.net", file=sys.stderr)
-        sys.exit(1)
-
-    token = os.environ.get("JIRA_TOKEN")
-    if not token:
-        print("Error: JIRA_TOKEN environment variable is not set.", file=sys.stderr)
-        sys.exit(1)
-
-    email = os.environ.get("JIRA_EMAIL")  # Optional, for Jira Cloud
-
-    base_url = base_url.rstrip("/")
+    transport = transport_from_env()
+    if transport is not None:
+        base_url, token, email = FIXTURE_BASE_URL, FIXTURE_TOKEN, None
+    else:
+        base_url, token, email = _env_credentials()
 
     try:
-        data = fetch_issue(issue_id, base_url, token, email)
+        data = fetch_issue(issue_id, base_url, token, email, transport)
     except urllib.error.HTTPError as e:
         print(f"Error: Jira API returned HTTP {e.code}: {e.reason}", file=sys.stderr)
         sys.exit(1)
@@ -172,6 +168,23 @@ def main():
     if changelog_lines:
         md += "\n" + "\n".join(changelog_lines)
     print(md)
+
+
+def _env_credentials():
+    base_url = os.environ.get("JIRA_URL")
+    if not base_url:
+        print("Error: JIRA_URL environment variable is not set.", file=sys.stderr)
+        print("Example: export JIRA_URL=https://yourcompany.atlassian.net", file=sys.stderr)
+        sys.exit(1)
+
+    token = os.environ.get("JIRA_TOKEN")
+    if not token:
+        print("Error: JIRA_TOKEN environment variable is not set.", file=sys.stderr)
+        sys.exit(1)
+
+    email = os.environ.get("JIRA_EMAIL")  # Optional, for Jira Cloud
+
+    return base_url.rstrip("/"), token, email
 
 
 if __name__ == "__main__":

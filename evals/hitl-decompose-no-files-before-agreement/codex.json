@@ -1,0 +1,5 @@
+{"prompt": "$kirpr-tasks-decompose SAS-200",
+ "env": {"EVAL_KIRPR_FIXTURES": ".eval-tracker"},
+ "checks": {"files_absent": ["sas-200/SOLUTION.md", "sas-200/00-overview.md"],
+            "commands_absent": ["create_youtrack"],
+            "requests_log_empty": true}}

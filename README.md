@@ -169,6 +169,22 @@ kirpr_memory.py stale --file F                          # lesson refs that no lo
 `lesson add` exits with code 2 when a similar lesson exists and names the
 `amend` command to use instead.
 
+## Evals
+
+Behavior evals check that the skills keep their contracts: they run only on
+explicit invocation, write nothing before the user's «да», and the expert
+panel finds planted defects. Run them before merging skill changes and when
+switching models:
+
+```bash
+claude plugin eval . --scaffold --runs 3 --threshold 0.8 --judge-model sonnet --max-cost-usd 15 -j 4 \
+  --allow-tools Bash Read Glob Grep Write Edit Agent Skill
+python3 evals/codex_smoke.py   # Codex smoke run
+```
+
+Details, cost and how to read the report: `evals/README.md`.
+`.claude-plugin/plugin.json` exists for evals; installing kirpr as a Claude Code plugin is not supported yet.
+
 ## Uninstall
 
 Remove only one platform or both with the same target selector:

@@ -1,0 +1,6 @@
+{"type":"thread.started","thread_id":"synthetic-0000","note":"SYNTHETIC sample written from documentation; replace with a real `codex exec --json` stream on first owner run"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"command_execution","command":"bash -lc 'python3 ~/.local/share/kirpr/scripts/kirpr_memory.py refresh --dry-run'","status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"command_execution","command":"bash -lc 'python3 ~/.local/share/kirpr/scripts/kirpr_memory.py refresh --dry-run'","aggregated_output":"[dry-run] ...","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Записать `.kirpr/workspace.md`? да / нет"}}
+{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}

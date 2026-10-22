@@ -12,20 +12,29 @@ import sys
 import urllib.request
 import urllib.error
 
+from kirpr_fixture_transport import FIXTURE_BASE_URL, FIXTURE_TOKEN, transport_from_env
+
 FIELDS = "$type,id,summary,description,reporter(login,name),estimation(presentation),comments(author(login,name),created,text),links(direction,linkType(name),issues(id,summary))"
 
 
-def fetch_issue(issue_id: str, base_url: str, token: str) -> dict:
+def _get_via(transport, url: str, headers: dict):
+    status, raw = transport("GET", url, headers, None)
+    if status >= 400:
+        raise RuntimeError(f"HTTP {status}")
+    return json.loads(raw.decode())
+
+
+def fetch_issue(issue_id: str, base_url: str, token: str, transport=None) -> dict:
     url = f"{base_url}/api/issues/{issue_id}?fields={FIELDS}"
-    req = urllib.request.Request(
-        url,
-        headers={
-            "Accept": "application/json",
-            "Authorization": f"Bearer {token}",
-            "Cache-Control": "no-cache",
-            "Content-Type": "application/json",
-        },
-    )
+    headers = {
+        "Accept": "application/json",
+        "Authorization": f"Bearer {token}",
+        "Cache-Control": "no-cache",
+        "Content-Type": "application/json",
+    }
+    if transport is not None:
+        return _get_via(transport, url, headers)
+    req = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read().decode())
 
@@ -33,8 +42,13 @@ def fetch_issue(issue_id: str, base_url: str, token: str) -> dict:
 ACTIVITY_FIELDS = "author(login,name),timestamp,field(name,presentation),added(name),removed(name)"
 
 
-def fetch_activities(issue_id: str, base_url: str, token: str) -> list:
+def fetch_activities(issue_id: str, base_url: str, token: str, transport=None) -> list:
     url = f"{base_url}/api/issues/{issue_id}/activities?fields={ACTIVITY_FIELDS}&categories=CustomFieldCategory,SprintCategory,IssueResolvedCategory"
+    if transport is not None:
+        try:
+            return _get_via(transport, url, {"Accept": "application/json"})
+        except Exception:
+            return []
     req = urllib.request.Request(
         url,
         headers={
@@ -145,21 +159,15 @@ def main():
         sys.exit(1)
 
     issue_id = sys.argv[1].strip()
-    base_url = os.environ.get("YOUTRACK_URL")
-    if not base_url:
-        print("Error: YOUTRACK_URL environment variable is not set.", file=sys.stderr)
-        print("Example: export YOUTRACK_URL=https://youtrack.example.com", file=sys.stderr)
-        sys.exit(1)
-    base_url = base_url.rstrip("/")
-
-    token = os.environ.get("YOUTRACK_TOKEN")
-    if not token:
-        print("Error: YOUTRACK_TOKEN environment variable is not set.", file=sys.stderr)
-        sys.exit(1)
+    transport = transport_from_env()
+    if transport is not None:
+        base_url, token = FIXTURE_BASE_URL, FIXTURE_TOKEN
+    else:
+        base_url, token = _env_credentials()
 
     try:
-        data = fetch_issue(issue_id, base_url, token)
-        activities = fetch_activities(issue_id, base_url, token)
+        data = fetch_issue(issue_id, base_url, token, transport)
+        activities = fetch_activities(issue_id, base_url, token, transport)
     except urllib.error.HTTPError as e:
         print(f"Error: YouTrack API returned HTTP {e.code}: {e.reason}", file=sys.stderr)
         sys.exit(1)
@@ -175,6 +183,21 @@ def main():
     if activity_lines:
         md += "\n" + "\n".join(activity_lines)
     print(md)
+
+
+def _env_credentials():
+    base_url = os.environ.get("YOUTRACK_URL")
+    if not base_url:
+        print("Error: YOUTRACK_URL environment variable is not set.", file=sys.stderr)
+        print("Example: export YOUTRACK_URL=https://youtrack.example.com", file=sys.stderr)
+        sys.exit(1)
+    base_url = base_url.rstrip("/")
+
+    token = os.environ.get("YOUTRACK_TOKEN")
+    if not token:
+        print("Error: YOUTRACK_TOKEN environment variable is not set.", file=sys.stderr)
+        sys.exit(1)
+    return base_url, token
 
 
 if __name__ == "__main__":

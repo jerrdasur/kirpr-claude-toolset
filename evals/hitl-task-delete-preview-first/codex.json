@@ -1,0 +1,5 @@
+{"prompt": "$kirpr-task-delete SAS-200",
+ "env": {"EVAL_KIRPR_FIXTURES": ".eval-tracker"},
+ "checks": {"last_message_regex": ["номер"],
+            "commands_absent": ["--confirm"],
+            "requests_log_empty": true}}

@@ -289,11 +289,16 @@ def run(plan_path: str, dry_run: bool, client=None, mapping_path=None,
         return render_dry_run(plan, mapping, solution_state)
 
     if client is None:
-        base_url = os.environ.get("YOUTRACK_URL")
-        token = os.environ.get("YOUTRACK_TOKEN")
-        if not base_url or not token:
-            raise RuntimeError("YOUTRACK_URL and YOUTRACK_TOKEN must be set.")
-        client = YouTrackClient(base_url.rstrip("/"), token)
+        from kirpr_fixture_transport import FIXTURE_BASE_URL, FIXTURE_TOKEN, transport_from_env
+        transport = transport_from_env()
+        if transport is not None:
+            client = YouTrackClient(FIXTURE_BASE_URL, FIXTURE_TOKEN, transport=transport)
+        else:
+            base_url = os.environ.get("YOUTRACK_URL")
+            token = os.environ.get("YOUTRACK_TOKEN")
+            if not base_url or not token:
+                raise RuntimeError("YOUTRACK_URL and YOUTRACK_TOKEN must be set.")
+            client = YouTrackClient(base_url.rstrip("/"), token)
 
     parent = plan["parent"]
     project_id = client.resolve_project_id(parent)

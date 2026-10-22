@@ -1,0 +1,4 @@
+schema_version: "1.1"
+name: hitl-task-delete-preview-first
+context:
+  scaffold_script: fixture.sh

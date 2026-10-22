@@ -1,0 +1,2 @@
+{"prompt": "$expert-panel",
+ "checks": {"last_message_regex": ["spec", "diff"]}}
