@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """Create YouTrack issues from a decomposition plan, wiring hierarchy and dependencies.
 
-Usage: python3 scripts/create_youtrack.py --plan sas-200/create-plan.json [--dry-run]
+Usage: python3 scripts/create_youtrack.py --plan sas-200/create-plan.json [--solution-file sas-200/SOLUTION.md] [--dry-run]
 
 Requires YOUTRACK_URL and YOUTRACK_TOKEN environment variables.
 """
 
 import argparse
+import datetime
 import json
 import os
 import sys
@@ -16,6 +17,25 @@ import urllib.request
 
 class PlanError(ValueError):
     """Raised when create-plan.json is malformed or inconsistent."""
+
+
+SOLUTION_KEY = "solution_comment"  # reserved key in .created.json: date the solution was posted
+
+
+def load_solution(path: str) -> str:
+    """Return SOLUTION.md body without its top-level heading; empty body is an error."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            text = f.read()
+    except FileNotFoundError:
+        raise PlanError(f"Solution file not found: {path}")
+    lines = text.lstrip().splitlines()
+    if lines and lines[0].startswith("# "):
+        lines = lines[1:]
+    body = "\n".join(lines).strip()
+    if not body:
+        raise PlanError(f"Solution file is empty: {path}")
+    return body
 
 
 def load_plan(path: str) -> dict:
@@ -75,6 +95,8 @@ def validate_plan(plan: dict) -> None:
                 raise PlanError(f"Task is missing '{field}': {t!r}")
         if t["key"] in keys:
             raise PlanError(f"Duplicate task key: {t['key']}")
+        if t["key"] == SOLUTION_KEY:
+            raise PlanError(f"Task key '{SOLUTION_KEY}' is reserved.")
         keys.append(t["key"])
     edges = plan.get("edges") or []
     keyset = set(keys)
@@ -89,7 +111,7 @@ def validate_plan(plan: dict) -> None:
         raise PlanError(f"Dependency graph has a cycle: {' -> '.join(cycle)}")
 
 
-def render_dry_run(plan: dict, existing: dict) -> str:
+def render_dry_run(plan: dict, existing: dict, solution_state=None) -> str:
     parent = plan["parent"]
     lines = ["# Dry-run: план создания задач", ""]
     lines.append(f"**Родитель:** {parent}")
@@ -116,12 +138,20 @@ def render_dry_run(plan: dict, existing: dict) -> str:
         lines.append("")
         for e in edges:
             lines.append(f"- {e['to']} depends on {e['from']}")
+    if solution_state is not None:
+        lines.append("")
+        lines.append("## Решение в родителя")
+        lines.append("")
+        if solution_state == "pending":
+            lines.append(f"- будет опубликовано комментарием к {parent}")
+        else:
+            lines.append(f"- уже опубликовано ({solution_state})")
     lines.append("")
     lines.append("_dry-run: сетевых записей не выполнено._")
     return "\n".join(lines)
 
 
-def render_report(plan: dict, mapping: dict, created_links: list) -> str:
+def render_report(plan: dict, mapping: dict, created_links: list, solution_state=None) -> str:
     lines = ["# Задачи созданы", ""]
     lines.append("| key | issue |")
     lines.append("|-----|-------|")
@@ -135,8 +165,15 @@ def render_report(plan: dict, mapping: dict, created_links: list) -> str:
             lines.append(f"- {link}")
     else:
         lines.append("_нет новых связей (все уже существовали)_")
+    if solution_state is not None:
+        lines.append("")
+        parent = plan["parent"]
+        if solution_state == "posted":
+            lines.append(f"Решение опубликовано комментарием к {parent}.")
+        else:
+            lines.append(f"Решение уже было опубликовано ({solution_state}).")
     lines.append("")
-    lines.append(f"**Итого:** {len(mapping)} задач, {len(created_links)} новых связей.")
+    lines.append(f"**Итого:** {len(plan['tasks'])} задач, {len(created_links)} новых связей.")
     return "\n".join(lines)
 
 
@@ -226,20 +263,30 @@ class YouTrackClient:
         body = {"query": query, "issues": [{"idReadable": source_id}]}
         self._request("POST", "/api/commands", body)
 
+    def add_comment(self, issue_id: str, text: str) -> None:
+        self._request("POST", f"/api/issues/{issue_id}/comments", {"text": text})
+
 
 def _mapping_path_for(plan_path: str) -> str:
     return os.path.join(os.path.dirname(os.path.abspath(plan_path)), ".created.json")
 
 
-def run(plan_path: str, dry_run: bool, client=None, mapping_path=None) -> str:
+def run(plan_path: str, dry_run: bool, client=None, mapping_path=None,
+        solution_path=None, today=None) -> str:
     plan = load_plan(plan_path)
     validate_plan(plan)
+    solution_text = load_solution(solution_path) if solution_path else None
     if mapping_path is None:
         mapping_path = _mapping_path_for(plan_path)
     mapping = load_mapping(mapping_path)
 
+    if solution_text is None:
+        solution_state = None
+    else:
+        solution_state = mapping.get(SOLUTION_KEY) or "pending"
+
     if dry_run:
-        return render_dry_run(plan, mapping)
+        return render_dry_run(plan, mapping, solution_state)
 
     if client is None:
         base_url = os.environ.get("YOUTRACK_URL")
@@ -278,7 +325,15 @@ def run(plan_path: str, dry_run: bool, client=None, mapping_path=None) -> str:
         client.add_link_command(to_id, f"depends on {from_id}")
         created_links.append(f"{to_id} depends on {from_id}")
 
-    return render_report(plan, mapping, created_links)
+    # Pass 3: publish SOLUTION.md as a comment on the parent, once.
+    if solution_state == "pending":
+        date = today or datetime.date.today().isoformat()
+        client.add_comment(parent, f"## Техническое решение, {date}\n\n{solution_text}")
+        mapping[SOLUTION_KEY] = date
+        save_mapping(mapping_path, mapping)
+        solution_state = "posted"
+
+    return render_report(plan, mapping, created_links, solution_state)
 
 
 def main(argv=None) -> int:
@@ -286,11 +341,13 @@ def main(argv=None) -> int:
         description="Create YouTrack issues from a decomposition plan."
     )
     parser.add_argument("--plan", required=True, help="Path to create-plan.json")
+    parser.add_argument("--solution-file",
+                        help="Path to SOLUTION.md to post as a comment on the parent issue.")
     parser.add_argument("--dry-run", action="store_true",
                         help="Preview only; no network writes.")
     args = parser.parse_args(argv)
     try:
-        output = run(args.plan, dry_run=args.dry_run)
+        output = run(args.plan, dry_run=args.dry_run, solution_path=args.solution_file)
     except (PlanError, RuntimeError) as e:
         print(f"Error: {e}", file=sys.stderr)
         return 1

@@ -1,120 +1,115 @@
-# Примеры стиля декомпозиции
+# Примеры стиля
 
-> Используй эти примеры как образец стиля, гранулярности и формата при создании новых декомпозиций.
-> Примеры взяты из sas-112/ (декомпозиция задачи SAS-112 "Страница Feed").
-> **Примечание:** sas-111/ использует устаревший `sp-` префикс в именах файлов — это legacy, не повторяй.
+> Эталон формата и плотности. Примеры — из декомпозиции SAS-646 («Сообщать scansrv о падении скана из report-uploader»), прошедшей три пересмотра с заказчиком.
 
 ---
 
-## Пример 1: 00-overview.md (навигационный индекс)
+## Пример 1: формулировка проблемы
 
 ```markdown
-# Страница Feed (бэкенд) — Обзор и навигация
-
-> Этот файл — навигационный индекс. Каждая задача самодостаточна и ссылается только на `SAS-112` и предыдущие задачи.
-
-## Внешние зависимости
-
-SAS-112 зависит от задач из SAS-111:
-- **SAS-115** (DDL) — добавляет трёхслойные поля severity/status в issues, таблицу `issueHistory`
-- **SAS-116** (codegen) — генерирует модели для расширенной схемы
-
-## Граф зависимостей
-
-[SAS-115] ──> [SAS-116] ──> 1.1 ──> 2.1 ──> 3.1 ──> 4.1
-                                      │       │
-                                      │       └──> 3.2 ──> 4.2
-                                      │
-                                      └──> 3.3 ──> 4.3
-
-**Параллельные потоки** после 2.1:
-- Поток A: 3.1 → 4.1 (Feed listing)
-- Поток B: 3.2 → 4.2 (Issue detail + occurences)
-- Поток C: 3.3 → 4.3 (Actions + comments)
-
-## Карта задач по файлам
-
-| Файл | Задача |
-|------|--------|
-| `01-schema.md` | 1.1 — DDL: расширение issues + repositories |
-| `02-1-domain-models.md` | 2.1 — Codegen + domain models |
-| `03-1-feed-listing.md` | 3.1 — Feed listing: manager |
-
-## Итого
-
-- **8 задач**, каждая <= 4 часов
-- **~21 час** суммарно
+Между job-ом сканера и scansrv одно сообщение — `scan.ScanReportUploaded`. Исход «попытка завершилась без отчёта» передать нечем, upload-callback кодирует его собственным падением (exit 1), а Nomad обращается с падением poststop как со сбоем инфраструктуры.
 ```
+
+Что здесь важно: контракт («одно сообщение»), недостающий исход и как он кодируется сейчас. Ни рестартов, ни алертов, ни задержек — это следствия.
+
+Отвергнутая формулировка: «Когда сканер не оставляет отчёт, scansrv узнаёт о проблеме только косвенно, после трёх рестартов poststop и повторного прогона сканера, что даёт минуты ожидания, пачку алертов и холостой второй прогон». Заказчик: «звучит слишком расплывчато, суть в чём? разве она в рестартах?».
 
 ---
 
-## Пример 2: Простая подзадача (01-schema.md)
+## Пример 2: SOLUTION.md целиком
 
 ```markdown
-## Задача 1.1 — DDL: расширение issues + repositories [apisrv, ~2ч]
+# SAS-646 — Техническое решение
 
-Расширить схему БД для поддержки Snooze/Ignore действий и workspace-level Feed.
+## Проблема
 
-### 1. Расширение таблицы `issues`
+Между job-ом сканера и scansrv одно сообщение — `scan.ScanReportUploaded`. Исход «попытка завершилась без отчёта» передать нечем, upload-callback кодирует его собственным падением (exit 1), а Nomad обращается с падением poststop как со сбоем инфраструктуры.
 
-Добавить колонки:
+## Решение
 
-ALTER TABLE "public"."issues" ADD COLUMN "snoozedUntil" timestamptz;
-ALTER TABLE "public"."issues" ADD COLUMN "snoozedByUserId" integer;
-ALTER TABLE "public"."issues" ADD COLUMN "ignoreReason" varchar(500);
+Job сканера сообщает scansrv исход каждой попытки: отчёт загружен или отчёта нет.
 
-- `snoozedUntil` — до какого момента issue заснужен. NULL = не заснужен.
-- `snoozedByUserId` — ID пользователя, который заснузил. NULL = не заснужен.
-- `ignoreReason` — причина игнорирования. NULL = не заигнорен.
+## upload-callback
 
-### 2. Добавить `defaultBranchId` в `repositories`
+- Нет `<id>.sarif` → `scan.ScanReportMissing(userScanID, scanID, reason)`, exit 0. `reason` — последние 2 КБ `${NOMAD_ALLOC_DIR}/logs/<scanner>.stderr.0`, `<scanner>` = `NOMAD_JOB_PARENT_ID` без `scanner-`.
 
-ALTER TABLE "public"."repositories" ADD COLUMN "defaultBranchId" integer;
-ALTER TABLE "public"."repositories" ADD CONSTRAINT "fk_repositories_defaultBranch"
-    FOREIGN KEY ("defaultBranchId") REFERENCES "public"."repositoryBranches"("repositoryBranchId");
+## scansrv
 
-### 3. Обновить `apisrv.dbs`
-
-Внести все изменения в DBSchema файл, затем регенерировать `docs/apisrv.sql`.
-
-Критерий готовности: `apisrv.sql` содержит новые колонки, FK constraint для `defaultBranchId`, схема валидна.
+- RPC `scan.ScanReportMissing(userScanID int, scanID int, reason string)`: под `userScan`-локом скану в `inProgress` записать `lastError = reason`, статус не менять; иначе no-op без ошибки.
+- `scanCheckTerminal`: признак того, что джоб закончился, — `Jobs().Info(dispatchID).Status == "dead"` (404 — тоже закончился), вместо арифметики по summary. `lastError`, если уже записан, не перезаписывать; иначе `nomad job failed`. Дальше — существующая обработка упавшего джоба.
 ```
+
+Что вычеркнуто из предыдущей версии и почему:
+
+| Фраза | Причина |
+|---|---|
+| «Повторы остаются за Nomad.» | запрет, а не изменение; закодирован в «статус не менять» |
+| «Вердикт scansrv выносит сам, когда джоб стал `dead`.» | повторяет пункт про `scanCheckTerminal` |
+| «Скрипты сканеров, `restart`/`reschedule`, issue-fingerprint не меняются.» | перечень того, чего не делаем |
+| «Есть `.sarif` — как сейчас. Ошибка VFS — exit 1, как сейчас.» | описывает отсутствие изменений |
+| «Клиент перегенерировать rpcgen-ом.» | как делать, а не что; есть в CLAUDE.md репозитория |
+| «Деплоить после scansrv.» | общее правило; обоснование оказалось неверным |
+| «Summary определяет текст: `Failed > 0 && Complete == 0` → …, иначе `completed without report`» | недостижимый случай: `completed` означает, что poststop уже доставил причину |
+| «Терминальный джоб при скане в `inProgress` → `Fail`, стоп своего джоба, каскад как сегодня» | пересказ существующего кода с лишним действием внутри |
 
 ---
 
-## Пример 3: Сложная подзадача (03-1-feed-listing.md)
+## Пример 3: задача в кратком формате
 
 ```markdown
-## Задача 3.1 — Feed listing: manager [apisrv, ~4ч]
+# scansrv: callback об отсутствии отчёта
 
-Создать `apisrv/pkg/sast/manager_feed.go` — бизнес-логика для workspace-level Feed с группировкой issues по vulnerability.
+1. Добавить RPC `scan.ScanReportMissing(userScanID, scanID, reason)`: под `userScan`-локом скану в `inProgress` записать `lastError = reason`, статус не менять; для скана в другом статусе вернуть успех без изменений.
+2. В `scanCheckTerminal` определять конец джоба по `Jobs().Info(dispatchID).Status == "dead"` (404 считать концом) вместо арифметики по summary.
+3. При вердикте не перезаписывать уже записанный `lastError`; если он пуст — `nomad job failed`.
+4. В тестах check-terminal добавить заглушку `/v1/job/<id>` рядом с `/summary`.
 
-**Зависимость:** задача 2.1 (domain models), SAS-111 задачи 3.1-3.2 (effective values, issueHistory).
-
-### Ключевая идея
-
-Feed показывает issues, сгруппированные по первому `vulnerabilityAlias` из `rule.vulnerabilityAliases`. Каждая строка Feed = одна vulnerability.
-
-### 1. `ListFeed(ctx, user User, search FeedSearch, page int, pageSize int) (FeedItems, int, error)`
-
-**Алгоритм:**
-1. Валидация: `pageSize` в диапазоне 1-100.
-2. Получить все `repositoryBranchIds` для workspace пользователя.
-3. Выполнить агрегирующий SQL-запрос с GROUP BY vulnerability.
-4. Загрузить `FullIssue` для каждого `latest_issue_id`.
-5. Собрать `FeedItems` и вернуть с total count.
-
-### 2. `SeveritySummary(ctx, user User, workspaceID int) (*SeveritySummary, error)`
-
-Агрегация issues по effective severity для хедера.
-
-### 3. `FeedFilters(ctx, user User, workspaceID int) (*FeedFilterOptions, error)`
-
-type FeedFilterOptions struct {
-    Severities []FilterOptionString
-    IssueTypes []FilterOptionString
-    Locations  []FilterOptionInt
-}
-
-Критерий готовности: `ListFeed` возвращает сгруппированные items, `SeveritySummary` считает Current issues, `FeedFilters` возвращает актуальные locations.
+Проверить:
+- `ScanReportMissing` для скана в `inProgress`: `lastError` записан, статус `inProgress`.
+- `ScanReportMissing` для скана `canceled`: ответ без ошибки, строка не изменилась.
+- Джоб `pending` (пауза reschedule) → вердикта нет; джоб `dead` → скан `failed` с причиной из `lastError`.
+- `TestDBManager_ScanCheckTerminal_*` проходят с новой заглушкой.
+- На dev: `Jobs().Info` dispatch-ребёнка в паузе reschedule отдаёт `pending`, после последней аллокации — `dead`.
 ```
+
+```markdown
+# upload-callback: ScanReportMissing вместо exit 1
+
+1. Если файла отчёта нет — вызвать `scan.ScanReportMissing(userScanID, scanID, reason)` и выйти с 0.
+2. `reason` — последние 2 КБ `${NOMAD_ALLOC_DIR}/logs/<scanner>.stderr.0`, где `<scanner>` — `NOMAD_JOB_PARENT_ID` без префикса `scanner-`; если лога нет — `report file not found: <path>`.
+3. Перегенерировать `scansrv/client.gen.go`.
+
+Проверить:
+- Нет `.sarif`, есть лог сканера → scansrv получил `ScanReportMissing` с хвостом лога, exit 0.
+- Нет `.sarif`, нет лога → `reason` с путём, exit 0.
+- Есть `.sarif` → `ScanReportUploaded`, как раньше.
+- scansrv недоступен → exit 1.
+```
+
+Отвергнутый формат (заказчик: «ужасный, длинный и человеку непонятный»): заголовок `## Задача X.Y — … [сервис, ~Nч]`, разделы «Техническое решение / Acceptance criteria / Как тестировать / Миграции», поля «Результат (S) / Готово, когда (M) / …», строка метаданных с SP и зависимостями.
+
+---
+
+## Пример 4: фрагмент research.md — данные вместо мнений
+
+```markdown
+## Статистика за 30 дней (Prometheus dev, `nomad_client_allocs_*`)
+
+| Показатель | Значение |
+|---|---|
+| dispatch-джобов сканеров с завершённой аллокацией | 6634 |
+| dispatch-джобов с упавшей аллокацией | 77 |
+| из них: две упавшие аллокации (reschedule повторил падение) | 65 |
+| из них: одна упавшая и одна завершённая (reschedule спас скан) | 2 |
+| OOM-kill | govulncheck 9, betterleaks 2 |
+```
+
+Этой таблицы хватило, чтобы закрыть спор о ценности повторов цифрой, а не аргументом. Таблица по алертам инцидента («время / задача / аллокация») тем же способом опровергла премиссу задачи про часовой таймаут: каскад случился через 4 минуты.
+
+---
+
+## Пример 5: границы слоёв
+
+Правило 4b из `workflow.md` («механизм, принадлежащий другому слою, не дублируется и не обходится, пока есть решение внутри своего слоя») в SAS-646 означало: повторы остаются за Nomad, scansrv их не дублирует; скрипты сканеров не меняются — исход сообщает upload-callback, который уже стоит на пути данных.
+
+Отдельно, как решение по ситуации, а не правило: `reason` берётся там, где он уже есть (лог сканера в alloc-директории), потому что передавать его параметрами по цепочке означало бы менять скрипты сканеров — тот самый чужой слой.

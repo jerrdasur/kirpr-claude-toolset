@@ -50,6 +50,11 @@ class TestValidatePlan(unittest.TestCase):
         with self.assertRaises(cy.PlanError):
             cy.validate_plan(make_plan(edges=[{"from": "01-schema", "to": "ghost"}]))
 
+    def test_reserved_key_raises(self):
+        tasks = [{"key": cy.SOLUTION_KEY, "summary": "s", "description": "d"}]
+        with self.assertRaises(cy.PlanError):
+            cy.validate_plan(make_plan(tasks=tasks, edges=[]))
+
     def test_cycle_raises(self):
         edges = [
             {"from": "01-schema", "to": "02-model"},
@@ -176,6 +181,15 @@ class TestYouTrackClient(unittest.TestCase):
         c = cy.YouTrackClient("https://yt.example.com", "tok", transport=tr)
         self.assertEqual(c.existing_link_targets("SAS-201", "Subtask"), {"SAS-200"})
 
+    def test_add_comment_posts_text(self):
+        tr = FakeTransport([(200, {})])
+        c = cy.YouTrackClient("https://yt.example.com", "tok", transport=tr)
+        c.add_comment("SAS-200", "hello")
+        call = tr.calls[0]
+        self.assertEqual(call["method"], "POST")
+        self.assertTrue(call["url"].endswith("/api/issues/SAS-200/comments"))
+        self.assertEqual(json.loads(call["data"]), {"text": "hello"})
+
     def test_add_link_command_posts_query(self):
         tr = FakeTransport([(200, {})])
         c = cy.YouTrackClient("https://yt.example.com", "tok", transport=tr)
@@ -200,6 +214,7 @@ class FakeClient:
         self.links = []         # (source_id, query)
         self.existing = {}      # (issue_id, link_type) -> set
         self._counter = 200
+        self.comments = []      # (issue_id, text)
 
     def resolve_project_id(self, issue_id):
         return "0-5"
@@ -216,6 +231,9 @@ class FakeClient:
     def add_link_command(self, source_id, query):
         self.links.append((source_id, query))
 
+    def add_comment(self, issue_id, text):
+        self.comments.append((issue_id, text))
+
 
 class TestRun(unittest.TestCase):
     def _write_plan(self, d, plan):
@@ -223,6 +241,101 @@ class TestRun(unittest.TestCase):
         with open(p, "w", encoding="utf-8") as f:
             f.write(json.dumps(plan))
         return p
+
+    def _write_solution(self, d, text="mechanism"):
+        p = os.path.join(d, "SOLUTION.md")
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(text)
+        return p
+
+    def test_solution_posted_and_recorded(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            s = self._write_solution(d)
+            fc = FakeClient()
+            out = cy.run(p, dry_run=False, client=fc, solution_path=s, today="2026-10-22")
+            self.assertEqual(fc.comments, [("SAS-200", "## Техническое решение, 2026-10-22\n\nmechanism")])
+            mapping = cy.load_mapping(os.path.join(d, ".created.json"))
+            self.assertEqual(mapping[cy.SOLUTION_KEY], "2026-10-22")
+            self.assertIn("Решение опубликовано комментарием к SAS-200", out)
+
+    def test_solution_skipped_when_recorded(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            s = self._write_solution(d)
+            cy.save_mapping(os.path.join(d, ".created.json"), {cy.SOLUTION_KEY: "2026-10-01"})
+            fc = FakeClient()
+            out = cy.run(p, dry_run=False, client=fc, solution_path=s, today="2026-10-22")
+            self.assertEqual(fc.comments, [])
+            self.assertIn("уже было опубликовано (2026-10-01)", out)
+            self.assertEqual(len(fc.created), 2)
+
+    def test_solution_with_legacy_mapping(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            s = self._write_solution(d)
+            cy.save_mapping(os.path.join(d, ".created.json"), {"01-schema": "SAS-201"})
+            fc = FakeClient()
+            cy.run(p, dry_run=False, client=fc, solution_path=s, today="2026-10-22")
+            self.assertEqual(len(fc.created), 1)
+            self.assertEqual(len(fc.comments), 1)
+            mapping = cy.load_mapping(os.path.join(d, ".created.json"))
+            self.assertEqual(mapping[cy.SOLUTION_KEY], "2026-10-22")
+            self.assertEqual(mapping["01-schema"], "SAS-201")
+
+    def test_solution_dry_run_shows_step_without_writes(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            s = self._write_solution(d)
+            fc = FakeClient()
+            out = cy.run(p, dry_run=True, client=fc, solution_path=s)
+            self.assertIn("будет опубликовано комментарием к SAS-200", out)
+            self.assertEqual(fc.comments, [])
+            self.assertEqual(fc.created, [])
+
+    def test_solution_heading_stripped_from_comment(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            s = self._write_solution(d, "# SAS-200 — Техническое решение\n\nmechanism\n")
+            fc = FakeClient()
+            cy.run(p, dry_run=False, client=fc, solution_path=s, today="2026-10-22")
+            self.assertEqual(fc.comments[0][1], "## Техническое решение, 2026-10-22\n\nmechanism")
+
+    def test_empty_solution_file_raises(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            s = self._write_solution(d, "# SAS-200 — Техническое решение\n\n")
+            with self.assertRaises(cy.PlanError):
+                cy.run(p, dry_run=False, client=FakeClient(), solution_path=s)
+
+    def test_failed_comment_does_not_record_key(self):
+        class FailingClient(FakeClient):
+            def add_comment(self, issue_id, text):
+                raise RuntimeError("boom")
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            s = self._write_solution(d)
+            with self.assertRaises(RuntimeError):
+                cy.run(p, dry_run=False, client=FailingClient(), solution_path=s)
+            mapping = cy.load_mapping(os.path.join(d, ".created.json"))
+            self.assertNotIn(cy.SOLUTION_KEY, mapping)
+            self.assertEqual(set(mapping), {"01-schema", "02-model"})
+
+    def test_report_table_has_no_reserved_key_row(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            s = self._write_solution(d)
+            out = cy.run(p, dry_run=False, client=FakeClient(), solution_path=s, today="2026-10-22")
+            self.assertNotIn("| solution_comment", out)
+
+    def test_missing_solution_file_raises_before_writes(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self._write_plan(d, make_plan())
+            fc = FakeClient()
+            with self.assertRaises(cy.PlanError) as ctx:
+                cy.run(p, dry_run=False, client=fc, solution_path=os.path.join(d, "nope.md"))
+            self.assertIn("nope.md", str(ctx.exception))
+            self.assertEqual(fc.created, [])
 
     def test_dry_run_makes_no_writes(self):
         with tempfile.TemporaryDirectory() as d:
@@ -324,6 +437,21 @@ class TestMain(unittest.TestCase):
                 rc = cy.main(["--plan", p, "--dry-run"])
             self.assertEqual(rc, 0)
             self.assertIn("dry-run", buf.getvalue().lower())
+
+    def test_solution_file_via_main_dry_run(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "create-plan.json")
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(json.dumps(make_plan()))
+            s = os.path.join(d, "SOLUTION.md")
+            with open(s, "w", encoding="utf-8") as f:
+                f.write("mechanism")
+            import io, contextlib
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                rc = cy.main(["--plan", p, "--solution-file", s, "--dry-run"])
+            self.assertEqual(rc, 0)
+            self.assertIn("будет опубликовано комментарием к SAS-200", buf.getvalue())
 
     def test_bad_plan_returns_1(self):
         with tempfile.TemporaryDirectory() as d:
