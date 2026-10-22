@@ -3,60 +3,62 @@ name: kirpr-task-delete
 description: "Use only when explicitly invoked to permanently delete one YouTrack or Jira issue."
 ---
 
-# Удаление задачи из трекера
+# Deleting an issue from the tracker
 
-Ты — помощник, который безвозвратно удаляет задачу из трекера.
+Everything addressed to the user and everything written to files is in Russian.
 
-**Операция необратима.** Задача исчезает вместе с комментариями, связями и
-историей. Восстановления нет.
+You are an assistant that permanently deletes an issue from the tracker.
 
-## Инициализация
+**The operation is irreversible.** The issue disappears together with its comments,
+links and history. There is no recovery.
 
-1. Прочитай `~/.local/share/kirpr/config/tracker-runtime.md` и строго выполни
-   его инструкцию выбора runtime для операции delete. Она определяет активный
-   трекер и скрипт; если конфигурация, трекер или операция недоступны,
-   остановись до запуска скрипта и назови точный файл для настройки.
-2. Номер задачи — **текст после явного вызова скила**. Номера нет — спроси и остановись до ответа.
+## Initialization
 
-## Фаза 1: Предпросмотр
+1. Read `~/.local/share/kirpr/config/tracker-runtime.md` and follow its
+   runtime-selection instruction for the delete operation exactly. It determines
+   the active tracker and script; if the configuration, tracker or operation is
+   unavailable, stop before running the script and name the exact file to configure.
+2. The issue number is the **text after the explicit skill invocation**. No number — ask and stop until answered.
+
+## Phase 1: Preview
 
 ```
 {ВЫБРАННЫЙ_СКРИПТ} --dry-run delete {ISSUE}
 ```
 
-`--confirm` на этом шаге не нужен. Покажи вывод целиком: заголовок, автора,
-число комментариев, связи и подзадачи.
+`--confirm` is not needed at this step. Show the output in full: title, author,
+number of comments, links and subtasks.
 
-## Фаза 2: Подзадачи (только Jira)
+## Phase 2: Subtasks (Jira only)
 
-Предпросмотр показал подзадачи — спроси отдельно: «Удалить вместе с
-подзадачами {список}?». `да` → добавь `--delete-subtasks`. `нет` → предупреди,
-что Jira откажет в удалении, пока подзадачи существуют.
+The preview showed subtasks — ask separately: «Удалить вместе с
+подзадачами {список}?». `да` → add `--delete-subtasks`. `нет` → warn that Jira
+will refuse the deletion while the subtasks exist.
 
-## Фаза 3: Подтверждение вводом номера
+## Phase 3: Confirmation by typing the number
 
-Скажи прямо: удаление необратимо. Затем попроси **ввести номер задачи
-вручную**.
+Say plainly: the deletion is irreversible. Then ask the user to **type the issue
+number by hand**.
 
-**`да` не принимается.** Принимается только точное совпадение с номером задачи.
-Пользователь ввёл что-то другое — не удаляй, сообщи о несовпадении и остановись.
+**`да` is not accepted.** Only an exact match with the issue number is accepted.
+The user typed something else — do not delete, report the mismatch and stop.
 
-## Фаза 4: Удаление
+## Phase 4: Deletion
 
 ```
 {ВЫБРАННЫЙ_СКРИПТ} delete {ISSUE} --confirm {ВВЕДЁННЫЙ_ПОЛЬЗОВАТЕЛЕМ_НОМЕР}
 ```
 
-В `--confirm` подставь **то, что ввёл пользователь**, а не номер из аргументов.
-Скрипт сверит их сам и откажет при несовпадении — это второй рубеж защиты.
+Put **what the user typed** into `--confirm`, not the number from the arguments.
+The script compares them itself and refuses on mismatch — this is the second line of defense.
 
-## Фаза 5: Отчёт
+## Phase 5: Report
 
-Покажи вывод скрипта. Напомни, что задача удалена безвозвратно.
+Show the script output. Remind the user that the issue is deleted permanently.
 
-## Правила
+## Rules
 
-- **Один вопрос за раз.**
-- **Никогда не удаляй по ответу `да`.** Только по введённому номеру задачи.
-- **Всегда показывай предпросмотр перед вопросом.**
-- **Никогда не удаляй несколько задач за раз.** Одна команда — одна задача.
+- **One question at a time.**
+- **Never delete on a `да` answer.** Only on the typed issue number.
+- **Always show the preview before the question.**
+- **Never delete several issues at once.** One command — one issue.

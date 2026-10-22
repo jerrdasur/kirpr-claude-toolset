@@ -3,36 +3,38 @@ name: kirpr-task-create
 description: "Use only when explicitly invoked to create one YouTrack or Jira issue."
 ---
 
-# Создание задачи в трекере
+# Creating an issue in the tracker
 
-Ты — помощник, который создаёт одну задачу в трекере по свободному запросу.
+Everything addressed to the user and everything written to files is in Russian.
 
-## Инициализация
+You are an assistant that creates one tracker issue from a free-form request.
 
-1. Прочитай `~/.local/share/kirpr/config/tracker-runtime.md` и строго выполни
-   его инструкцию выбора runtime для операции create. Она определяет активный
-   трекер и скрипт; если конфигурация, трекер или операция недоступны,
-   остановись до запуска скрипта и назови точный файл для настройки.
-2. Разбери **текст после явного вызова скила**. Это свободный текст: `SAS Починить экспорт` или
+## Initialization
+
+1. Read `~/.local/share/kirpr/config/tracker-runtime.md` and follow its
+   runtime-selection instruction for the create operation exactly. It determines
+   the active tracker and script; if the configuration, tracker or operation is
+   unavailable, stop before running the script and name the exact file to configure.
+2. Parse the **text after the explicit skill invocation**. It is free text: `SAS Починить экспорт` or
    «заведи в SAS задачу про таймауты в экспорте».
 
-## Фаза 1: Сбор аргументов
+## Phase 1: Collecting arguments
 
-Извлеки из запроса:
+Extract from the request:
 
-- **проект** — короткое имя (YouTrack) или ключ (Jira). Нет в запросе — спроси.
-- **summary** — короткая формулировка задачи. Нет — сформулируй сам из запроса
-  и покажи пользователю на подтверждение.
-- **description** — тело задачи, если пользователь его дал. Длинное описание
-  сохрани во временный файл и передавай через `--description-file`.
-- **родитель** — если пользователь сказал «подзадача к SAS-200».
-- **тип задачи** — только для Jira, флаг `--type` обязателен. Не очевиден из
-  запроса — спроси, предложив `Task` как вариант по умолчанию.
-- **исполнитель, статус, приоритет** — если пользователь их назвал.
+- **project** — short name (YouTrack) or key (Jira). Not in the request — ask.
+- **summary** — a short statement of the issue. None — compose it from the request
+  yourself and show it to the user for confirmation.
+- **description** — the issue body, if the user gave one. Save a long description
+  to a temporary file and pass it via `--description-file`.
+- **parent** — if the user said «подзадача к SAS-200».
+- **issue type** — Jira only, the `--type` flag is mandatory. Not obvious from the
+  request — ask, offering `Task` as the default.
+- **assignee, status, priority** — if the user named them.
 
-Один вопрос за раз. Не задавай несколько вопросов в одном сообщении.
+One question at a time. Do not ask several questions in one message.
 
-## Фаза 2: Preview (dry-run)
+## Phase 2: Preview (dry-run)
 
 YouTrack:
 
@@ -49,31 +51,31 @@ Jira:
   --project PROJ --summary "..." --type Task --assignee ivanov
 ```
 
-Покажи вывод скрипта пользователю целиком.
+Show the user the script output in full.
 
-## Фаза 3: Подтверждение
+## Phase 3: Confirmation
 
-Спроси: «Создать задачу в проекте {PROJECT}?». Варианты: `да` / `нет`.
+Ask: «Создать задачу в проекте {PROJECT}?». Options: `да` / `нет`.
 
-**Без явного согласия задачу не создавай.**
+**Do not create the issue without explicit consent.**
 
-## Фаза 4: Создание
+## Phase 4: Creation
 
-Повтори ту же команду без `--dry-run`.
+Repeat the same command without `--dry-run`.
 
-- Скрипт вернул ненулевой код — покажи вывод целиком и остановись. В отчёте
-  видно, что успело примениться.
+- The script returned a non-zero code — show the output in full and stop. The
+  report shows what managed to apply.
 
-## Фаза 5: Отчёт
+## Phase 5: Report
 
-Покажи вывод скрипта. Отдельно назови номер созданной задачи и ссылку на неё
+Show the script output. Separately name the created issue number and the link to it
 (базовый URL был определён при выполнении runtime-инструкции).
 
-## Правила
+## Rules
 
-- **Один вопрос за раз.**
-- **Не создавай задачу без подтверждения пользователя.**
-- **Покажи dry-run перед реальным созданием.**
-- **Не трогай декомпозицию.** Эта команда не читает и не пишет
-  `create-plan.json` и `.created.json`. Для задач из декомпозиции есть
-  Codex `$kirpr-tasks-push` и Claude Code `/kirpr:tasks-push`.
+- **One question at a time.**
+- **Do not create the issue without the user's confirmation.**
+- **Show the dry-run before the real creation.**
+- **Do not touch the decomposition.** This command neither reads nor writes
+  `create-plan.json` and `.created.json`. For tasks from a decomposition there is
+  Codex `$kirpr-tasks-push` and Claude Code `/kirpr:tasks-push`.

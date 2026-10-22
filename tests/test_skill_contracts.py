@@ -122,7 +122,7 @@ class TestTrackerCrudSkills(unittest.TestCase):
 
         self.assertIn("`URL:`", runtime)
         self.assertIn("remember it as the base URL", runtime)
-        self.assertIn("базовый URL был определён при выполнении runtime-инструкции", create_skill)
+        self.assertIn("базовый URL был определён при выполнении runtime-инструкции", create_skill)  # user-facing literal stays Russian
 
     def test_create_skill_cross_workflow_reference_shows_both_invocation_forms(self):
         create_skill = (ROOT / "skills" / "kirpr-task-create" / "SKILL.md").read_text(
@@ -171,11 +171,11 @@ class TestTextSkill(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("Куда сохранить результат?", text)
-        self.assertIn("для любой задачи", text.lower())
-        self.assertIn("не начинай редактирование", text)
+        self.assertIn("for any task", text.lower())
+        self.assertIn("do not start editing", text)
         destination = text.index("Куда сохранить результат?")
-        editing = text.index("До редактуры")
-        execution = text.index("Выполни задачу")
+        editing = text.index("Before editing")
+        execution = text.index("Do the task")
         self.assertLess(destination, editing)
         self.assertLess(destination, execution)
 

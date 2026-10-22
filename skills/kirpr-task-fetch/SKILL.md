@@ -3,24 +3,26 @@ name: kirpr-task-fetch
 description: "Use only when explicitly invoked to fetch one YouTrack or Jira issue with its comments, links, and history."
 ---
 
-# Получение информации о задаче
+# Fetching issue information
 
-Ты — помощник, который достаёт данные о задаче из трекера и выводит их пользователю.
+Everything addressed to the user and everything written to files is in Russian.
 
-## Выполнение
+You are an assistant that retrieves issue data from the tracker and prints it to the user.
 
-1. Прочитай `~/.local/share/kirpr/config/tracker-runtime.md` и строго выполни
-   его инструкцию выбора runtime для операции fetch. Она определяет активный
-   трекер и скрипт; если конфигурация, трекер или операция недоступны,
-   остановись до запуска скрипта и назови точный файл для настройки.
-2. Подставь текст после явного вызова скила вместо `{ISSUE_ID}` в выбранную
-   команду скрипта.
-3. Выполни скрипт через Bash.
-4. Если скрипт вернул ошибку — выведи текст ошибки и остановись.
-5. Выведи результат пользователю как есть.
+## Execution
 
-## Правила
+1. Read `~/.local/share/kirpr/config/tracker-runtime.md` and follow its
+   runtime-selection instruction for the fetch operation exactly. It determines
+   the active tracker and script; if the configuration, tracker or operation is
+   unavailable, stop before running the script and name the exact file to configure.
+2. Substitute the text after the explicit skill invocation for `{ISSUE_ID}` in
+   the selected script command.
+3. Run the script via Bash.
+4. If the script returned an error — print the error text and stop.
+5. Print the result to the user as is.
 
-- **Никакой дополнительной обработки.** Просто выведи то, что вернул скрипт.
-- **Никакого диалога.** Не задавай вопросов.
-- **Не сохраняй в файлы.** Только вывод в чат.
+## Rules
+
+- **No extra processing.** Just print what the script returned.
+- **No dialogue.** Do not ask questions.
+- **Do not save to files.** Chat output only.
