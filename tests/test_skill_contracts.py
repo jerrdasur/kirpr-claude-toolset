@@ -116,13 +116,17 @@ class TestTrackerCrudSkills(unittest.TestCase):
             with self.subTest(command=command):
                 assert_claude_adapter(self, command, skill)
 
+    def test_decompose_description_promises_self_contained_subtasks(self):
+        _, frontmatter = read_frontmatter(ROOT / "skills" / "kirpr-tasks-decompose" / "SKILL.md")
+        self.assertIn("self-contained implementation subtasks", frontmatter)
+
     def test_create_skill_obtains_issue_link_base_url_from_runtime(self):
         runtime = (ROOT / "kirpr" / "config" / "tracker-runtime.md").read_text(encoding="utf-8")
         create_skill = (ROOT / "skills" / "kirpr-task-create" / "SKILL.md").read_text(encoding="utf-8")
 
         self.assertIn("`URL:`", runtime)
         self.assertIn("remember it as the base URL", runtime)
-        self.assertIn("базовый URL был определён при выполнении runtime-инструкции", create_skill)  # user-facing literal stays Russian
+        self.assertIn("the base URL was determined while running the runtime instruction", create_skill)
 
     def test_create_skill_cross_workflow_reference_shows_both_invocation_forms(self):
         create_skill = (ROOT / "skills" / "kirpr-task-create" / "SKILL.md").read_text(
@@ -181,12 +185,15 @@ class TestTextSkill(unittest.TestCase):
 
 
 class TestExistingSkillPortability(unittest.TestCase):
+    def test_expert_panel_agents_answer_in_russian(self):
+        text = (ROOT / "skills" / "expert-panel" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("Language: every field of every finding and the good-decisions list is in Russian.", text)
+
     def test_russian_trigger_phrases_present(self):
         for name in ("expert-panel", "grill-me"):
             _, frontmatter = read_frontmatter(ROOT / "skills" / name / "SKILL.md")
             with self.subTest(skill=name):
-                self.assertIn("Triggers:", frontmatter)
-                self.assertRegex(frontmatter, "[А-Яа-я]")
+                self.assertRegex(frontmatter, r"Triggers \([^)]*explicit call[^)]*\):[^\n]*[А-Яа-яЁё]")
 
     def test_grill_me_discovers_both_project_guidance_files(self):
         lenses = (ROOT / "skills" / "grill-me" / "phases" / "lenses.md").read_text(

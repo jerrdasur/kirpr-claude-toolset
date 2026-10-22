@@ -1,6 +1,6 @@
 ---
 name: kirpr-tasks-decompose
-description: "Use only when explicitly invoked to decompose one tracked task into implementation subtasks."
+description: "Use only when explicitly invoked to decompose one tracked task into self-contained implementation subtasks."
 ---
 
 # Task decomposition

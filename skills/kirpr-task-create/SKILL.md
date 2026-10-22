@@ -69,7 +69,7 @@ Repeat the same command without `--dry-run`.
 ## Phase 5: Report
 
 Show the script output. Separately name the created issue number and the link to it
-(базовый URL был определён при выполнении runtime-инструкции).
+(the base URL was determined while running the runtime instruction).
 
 ## Rules
 

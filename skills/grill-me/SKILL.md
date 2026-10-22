@@ -1,6 +1,6 @@
 ---
 name: grill-me
-description: "Endless grilling of a product hypothesis: one open question at a time, hunting for contradictions, ambiguities, unknowns and overcomplications. Lenses are derived for the project. Stops only on the user's direct command; the output is a document with all collected facts. Explicit invocation: Codex — $grill-me [topic | file path | session directory path]; Claude Code — /grill-me [topic | file path | session directory path]. Triggers: прожарка гипотезы, прожарь идею, допроси гипотезу, grill-me."
+description: "Endless grilling of a product hypothesis: one open question at a time, hunting for contradictions, ambiguities, unknowns and overcomplications. Lenses are derived for the project. Stops only on the user's direct command; the output is a document with all collected facts. Explicit invocation: Codex — $grill-me [topic | file path | session directory path]; Claude Code — /grill-me [topic | file path | session directory path]. Triggers (Russian names users type with the explicit call, not a reason to invoke on your own): прожарка гипотезы, прожарь идею, допроси гипотезу, grill-me."
 ---
 
 # grill-me — grilling product hypotheses

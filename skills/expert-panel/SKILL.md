@@ -1,6 +1,6 @@
 ---
 name: expert-panel
-description: "Multi-persona review of Go projects by a panel of experts (Rob Pike, Dave Cheney, Neal Ford, Michael Stonebraker plus custom ones). Two modes: spec review before planning and git diff review before committing. Explicit invocation only: Codex — $expert-panel spec <path> or $expert-panel diff [base]; Claude Code — /expert-panel spec <path> or /expert-panel diff [base]. Triggers: ревью панелью экспертов, прогони через экспертов, ревью спеки, ревью диффа."
+description: "Multi-persona review of Go projects by a panel of experts (Rob Pike, Dave Cheney, Neal Ford, Michael Stonebraker plus custom ones). Two modes: spec review before planning and git diff review before committing. Explicit invocation only: Codex — $expert-panel spec <path> or $expert-panel diff [base]; Claude Code — /expert-panel spec <path> or /expert-panel diff [base]. Triggers (Russian names users type with the explicit call, not a reason to invoke on your own): ревью панелью экспертов, прогони через экспертов, ревью спеки, ревью диффа."
 ---
 
 # expert-panel — review by a panel of experts
@@ -45,6 +45,7 @@ The agent prompt includes:
 - Relevant repository paths collected by the orchestrator.
 - The prefix for finding `id`s. Core: Pike — `P`, Cheney — `C`, Ford — `F`, Stonebraker — `S`. Overlay experts get prefixes from the orchestrator — the first letter of the surname, or the first two on collision with a taken letter.
 - Restriction: read-only. The agent does not edit files, run tests or make commits.
+- Language: every field of every finding and the good-decisions list is in Russian.
 - The response schema (below).
 
 The orchestrator does not read the persona files — only the agents need them.
