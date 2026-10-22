@@ -8,7 +8,7 @@ The marker literal appears in this file exactly once — as the last line. Other
 
 ## Disable a core expert
 
-A `disable: <id>` line after the marker removes the expert from the panel. Core ids: `pike`, `cheney`, `ford`, `stonebraker`.
+A `disable: <id>` line after the marker removes the expert from the panel. Core ids: `pike`, `cheney`, `ford`, `stonebraker`, `valsorda`.
 
     disable: stonebraker
 
@@ -18,27 +18,29 @@ A second-level section of the form `## <Имя> — <Домен>` after the mark
 
 Sample:
 
-    ## Filippo Valsorda — безопасность
+    ## Mitchell Hashimoto — тесты
 
-    > "Every input is hostile until proven otherwise."
+    > "A test is worth a thousand comments."
 
-    **Кто.** Криптограф, бывший security lead команды Go, автор age. Не верит
-    никаким входным данным.
+    **Кто.** Создатель Terraform и Vagrant. Считает, что поведение без теста
+    не существует, а тест должен читаться как спецификация.
 
-    **Как ревьюит.** Ищет границы доверия: где данные приходят извне и где
-    используются без проверки.
+    **Как ревьюит.** Сначала читает тесты, потом код. Нет теста на новую
+    ветку при наличии тест-харнесса — это находка.
 
     **Характерные вопросы:**
-    - Кто проверяет, что пользователь имеет доступ именно к этому ресурсу?
-    - Куда утечёт этот токен, если сервис упадёт с паникой?
+    - Если удалить этот тест, кто-нибудь заметит?
+    - Пойму ли я по одному сообщению упавшего теста, что сломалось?
 
     **В спеке проверяет:**
-    - Названы ли границы доверия и источники недоверенных данных
-    - Описана ли авторизация, а не только аутентификация
+    - Названы ли сценарии, которые станут тестами, с конкретными данными
+    - Есть ли отрицательные и граничные сценарии
 
     **В diff проверяет:**
-    - SQL-инъекции в запросах, собранных вручную
-    - IDOR: проверяются ли права на объект, а не только вход
-    - Не логируются ли пароли, токены, персональные данные
+    - Покрыты ли happy path и ошибочные ветки новой функциональности
+    - Герметичны ли тесты: не опираются на данные, которые уже лежат в БД
+    - Тот же ли тестовый фреймворк, что в соседних файлах пакета
+
+A section whose name matches a core expert (for example a Filippo Valsorda section copied from an older template) replaces that core persona instead of adding a duplicate.
 
 <!-- BEGIN EXPERTS -->

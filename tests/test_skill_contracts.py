@@ -231,3 +231,167 @@ class TestMemoryWriters(unittest.TestCase):
     def test_review_has_lessons_category(self):
         text = (ROOT / "skills/kirpr-tasks-review/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("#### Category 5: Lessons", text)
+
+
+PANEL = ROOT / "skills" / "expert-panel"
+
+
+def panel_text(*parts):
+    return (PANEL.joinpath(*parts)).read_text(encoding="utf-8")
+
+
+class TestExpertPanelCalibration(unittest.TestCase):
+    def test_no_display_limit_and_no_below_threshold_section(self):
+        for parts in (("SKILL.md",), ("modes", "diff.md"), ("modes", "spec.md")):
+            text = panel_text(*parts)
+            with self.subTest(file="/".join(parts)):
+                self.assertNotIn("Ниже порога", text)
+                self.assertNotIn("no more than 3 `blocker`", text)
+
+    def test_finding_schema_has_confidence_and_diff_block(self):
+        text = panel_text("SKILL.md")
+        for field in ("`уверенность`", "`инвариант`", "`ломающий вход`", "`тест`"):
+            with self.subTest(field=field):
+                self.assertIn(field, text)
+        self.assertIn("worst case", text)
+
+    def test_severity_calibration_says_what_is_not_blocker(self):
+        text = panel_text("SKILL.md")
+        self.assertIn("Not `blocker` or `major`", text)
+        self.assertIn("excluded by the contract", text)
+
+    def test_doubt_goes_to_confidence_not_severity(self):
+        text = panel_text("SKILL.md")
+        self.assertNotIn("picks the higher one", text)
+        self.assertIn("doubt is expressed in `уверенность`", text)
+
+    def test_dedup_merges_locations_not_bugs(self):
+        text = panel_text("SKILL.md")
+        self.assertIn("one finding with a list of", text)
+        self.assertIn("Different bugs are not merged", text)
+
+
+PERSONA_BLOCKS = ("> \"", "**Кто.**", "**Как ревьюит.**", "**Характерные вопросы:**",
+                  "**В спеке проверяет:**", "**В diff проверяет:**")
+
+
+class TestExpertPanelCore(unittest.TestCase):
+    def test_valsorda_persona_has_all_blocks(self):
+        text = panel_text("experts", "valsorda.md")
+        for block in PERSONA_BLOCKS:
+            with self.subTest(block=block):
+                self.assertIn(block, text)
+        for topic in ("IDOR", "injection", "secrets"):
+            self.assertIn(topic, text)
+
+    def test_core_lists_valsorda_with_prefix_v(self):
+        text = panel_text("SKILL.md")
+        self.assertIn("`experts/valsorda.md`", text)
+        self.assertIn("`valsorda`", text)
+        self.assertIn("Valsorda — `V`", text)
+        self.assertIn("«Панель: Pike, Cheney, Ford, Stonebraker, Valsorda»", text)
+
+    def test_overlay_with_core_name_replaces_core_persona(self):
+        text = panel_text("SKILL.md")
+        self.assertIn("replaces that core expert", text)
+
+    def test_template_samples_hashimoto_and_lists_valsorda_id(self):
+        text = (ROOT / "kirpr" / "config" / "custom-experts.md.template").read_text(encoding="utf-8")
+        self.assertNotIn("## Filippo Valsorda", text)
+        self.assertIn("## Mitchell Hashimoto — тесты", text)
+        self.assertIn("`valsorda`", text)
+        self.assertEqual(text.count("<!-- BEGIN EXPERTS -->"), 1)
+        self.assertTrue(text.rstrip().endswith("<!-- BEGIN EXPERTS -->"))
+
+
+class TestExpertPanelAcceptance(unittest.TestCase):
+    def setUp(self):
+        self.diff = panel_text("modes", "diff.md")
+
+    def test_orchestrator_acceptance_step_before_panel(self):
+        self.assertIn("## Phase 1.5. Acceptance and generated code", self.diff)
+        self.assertLess(self.diff.index("## Phase 1.5."), self.diff.index("## Phase 2. Panel"))
+        for needle in ("ACCEPTANCE:", "- met:", "- unmet:", "`NN-service.md`", "«Проверить»", "scope creep"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, self.diff)
+
+    def test_agents_no_longer_duplicate_spec_checks(self):
+        self.assertNotIn("every agent additionally checks", self.diff)
+
+    def test_missing_spec_is_declared_as_blind_spot(self):
+        self.assertIn("критерии приёмки не проверялись", self.diff)
+
+    def test_regeneration_check_and_memory(self):
+        self.assertIn("//go:generate", self.diff)
+        self.assertIn("не перегенерирована", self.diff)
+        self.assertIn(".kirpr/memory.md", self.diff)
+        self.assertIn("## Как проверять", self.diff)
+        self.assertIn(".kirpr/memory.md", panel_text("modes", "spec.md"))
+
+    def test_prefix_a_reserved_for_orchestrator(self):
+        self.assertIn("`A` is reserved", panel_text("SKILL.md"))
+
+
+class TestExpertPanelReviewFixes(unittest.TestCase):
+    def setUp(self):
+        self.skill = panel_text("SKILL.md")
+        self.diff = panel_text("modes", "diff.md")
+        self.spec = panel_text("modes", "spec.md")
+        self.valsorda = panel_text("experts", "valsorda.md")
+
+    def test_generated_check_is_narrow_and_low_by_default(self):
+        for needle in ("`-destination`", "Code generated by", "categories 1 and 2 of «File filtering»",
+                       "default: `minor`, `уверенность` `low`", "direct match"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, self.diff)
+        self.assertNotIn("contains a `//go:generate` directive, or `.kirpr/memory.md` names a changed file", self.diff)
+
+    def test_low_confidence_major_does_not_force_request_changes(self):
+        self.assertIn("A `major` with `уверенность` `low` does not by itself", self.diff)
+
+    def test_agents_receive_severity_section(self):
+        prompt = self.skill.split("The agent prompt includes:", 1)[1].split("## Finding schema", 1)[0]
+        self.assertIn("the «Severity» section", prompt)
+
+    def test_calibration_is_scoped_by_mode(self):
+        severity = self.skill.split("## Severity", 1)[1].split("## Synthesis", 1)[0]
+        self.assertIn("In diff mode:", severity)
+        self.assertIn("In spec mode:", severity)
+
+    def test_downgrade_rule_spares_a_findings_and_fills_block(self):
+        self.assertIn("`A` findings are exempt", self.skill)
+        self.assertIn("fills the block itself", self.skill)
+        self.assertIn("one step", self.skill)
+        self.assertNotIn("is downgraded to `minor` during synthesis", self.skill)
+
+    def test_unverified_criteria(self):
+        self.assertIn("- unverified:", self.diff)
+
+    def test_criteria_confirmed_in_phase_1(self):
+        phase1 = self.diff.split("## Phase 1. Context", 1)[1].split("## Phase 1.5", 1)[0]
+        self.assertIn("which sections this diff covers", phase1)
+        self.assertIn("A file with a «Проверить» list is a task file", phase1)
+
+    def test_walkthrough_batch_forms_and_unmentioned(self):
+        for needle in ("accept all except", "accept blocker,major", "reject nit — причина", "без решения"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, self.spec)
+        self.assertNotIn("both fall outside the format", self.spec)
+        self.assertIn("compact table", self.skill)
+
+    def test_minor_consistency_fixes(self):
+        self.assertIn("`уверенность` of the finding whose severity was kept", self.skill)
+        self.assertIn("(custom)", self.skill)
+        self.assertIn("for intent only", self.diff)
+        self.assertIn("criterion instead of `file:line`", self.diff)
+        self.assertIn("and adds the test from `тест`", self.diff)
+        self.assertIn("Pike, Cheney, Ford, Stonebraker, Valsorda", self.spec)
+        self.assertIn("`AGENTS.md`", self.spec)
+        for text in (self.diff, self.spec):
+            self.assertIn("kirpr-onboard", text)
+
+    def test_valsorda_covers_ssrf_tls_and_avoids_invented_cves(self):
+        for needle in ("SSRF", "InsecureSkipVerify", "govulncheck", "`replace`", "Not a finding"):
+            with self.subTest(needle=needle):
+                self.assertIn(needle, self.valsorda)
+        self.assertNotIn("unpinned versions", self.valsorda)

@@ -45,8 +45,16 @@ entering the issue number.
 | Review against a base | `/expert-panel diff main` | `$expert-panel diff main` |
 | Review against a specification | `/expert-panel diff --spec docs/spec.md` | `$expert-panel diff --spec docs/spec.md` |
 
-The panel combines reviews from Rob Pike, Dave Cheney, Neal Ford, and Michael
-Stonebraker. Customize it in `~/.config/kirpr/custom-experts.md`.
+The panel combines reviews from Rob Pike, Dave Cheney, Neal Ford, Michael
+Stonebraker, and Filippo Valsorda; each runs as a separate agent. Customize it
+in `~/.config/kirpr/custom-experts.md` (`disable: <id>` or your own sections).
+
+Every finding is reported in full with a confidence level; in diff mode each
+`blocker` and `major` names the violated invariant, the breaking input, and the
+test that closes it. `--spec` accepts a design spec or a decomposition task
+file `NN-service.md`: before the panel runs, its acceptance criteria are
+checked as met / unmet. The panel also flags generated code that was not
+regenerated and reads `.kirpr/memory.md` when the repository has one.
 
 ### Product-hypothesis interview
 

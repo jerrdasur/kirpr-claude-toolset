@@ -29,3 +29,16 @@ class TestReadme(unittest.TestCase):
         for value in ("/kirpr:onboard", "$kirpr-onboard", ".kirpr/workspace.md", ".kirpr/memory.md", "kirpr_memory.py"):
             with self.subTest(value=value):
                 self.assertIn(value, self.text)
+
+    def test_documents_panel_composition_and_acceptance(self):
+        self.assertIn("Filippo Valsorda", self.text)
+        self.assertIn("NN-service.md", self.text)
+
+
+class TestExpertPanelSpecHistory(unittest.TestCase):
+    def test_limit_reversal_is_recorded(self):
+        spec = (ROOT / "docs/superpowers/specs/2026-07-24-expert-panel-design.md").read_text(encoding="utf-8")
+        self.assertIn("## Изменения", spec)
+        section = spec.split("## Изменения", 1)[1]
+        self.assertIn("2026-10-22", section)
+        self.assertIn("лимит", section)

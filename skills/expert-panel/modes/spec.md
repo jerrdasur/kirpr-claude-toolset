@@ -11,7 +11,7 @@ A critical examination of a design document before moving on to planning. Ends w
 ## Phase 1. Context
 
 1. Read the spec in full.
-2. Read the repository's `CLAUDE.md` if it exists.
+2. Read the repository's `CLAUDE.md` or `AGENTS.md` and `.kirpr/memory.md` if they exist. `## Ловушки` and `## Уроки` from memory go to the agents as context. No memory file — say in one line that `$kirpr-onboard` in Codex or `/kirpr:onboard` in Claude Code creates it, and continue.
 3. Find the affected code: grep by the spec's key terms — package, type, table and endpoint names. Collect a list of relevant paths, no more than 20.
 4. If the spec has a `## Review log` section — read it. Findings rejected earlier with a reason are not raised again. Findings accepted earlier are checked: are they reflected in the current text.
 5. Show the user a summary:
@@ -26,7 +26,7 @@ A critical examination of a design document before moving on to planning. Ends w
 
 Assemble the active panel and launch the agents per the protocol in `SKILL.md`. Mode — `спека`: the agent uses the «В спеке проверяет» block of its persona.
 
-Pass to every agent: the spec path, the list of relevant paths from Phase 1, the Review log content if it exists.
+Pass to every agent: the spec path, the list of relevant paths from Phase 1, the Review log content if it exists, and `## Ловушки` / `## Уроки` from `.kirpr/memory.md` if it exists.
 
 ## Phase 3. Report
 
@@ -34,9 +34,8 @@ Synthesize per the protocol in `SKILL.md` and show the report:
 
 1. **Панель** — who took part.
 2. **Удачные решения** — combined, without a per-expert breakdown.
-3. **Замечания** — by descending severity, each with `id`, place, substance, consequence and the proposed edit.
+3. **Замечания** — all of them, by descending severity, each with `id`, place, substance, consequence, the proposed edit and `уверенность`.
 4. **Конфликты** — pairs of mutually exclusive findings with each expert's position.
-5. **Ниже порога** — collapsed lines, if the limits were exceeded.
 
 ## Phase 4. Walkthrough
 
@@ -48,11 +47,21 @@ Ask the user to answer in one line in the format:
 - `reject` — a reason is mandatory; it goes into the Review log.
 - `?` — discussed one at a time, each until an `accept` or `reject` decision.
 
-Conflicts require an explicit choice of a side — accepting both findings of a pair is not possible.
+Group forms are allowed, because an unlimited report can hold dozens of findings:
 
-If the answer did not parse, or mentions an id that is not in the report — show what exactly you did not understand and ask again. Do not guess and do not apply a partially parsed answer: «accept all» and «все, кроме F3» are the most likely answers to a report with a dozen findings, and both fall outside the format.
+- `accept all`, `accept all except F3,P5`;
+- `accept blocker,major` — every finding of those severities;
+- `reject nit — причина`, `reject minor — причина` — one reason for the whole group.
 
-Do not poll finding by finding: with fifteen findings that is fifteen rounds, more expensive than the review itself.
+Explicit ids override a group form in the same answer: `accept blocker,major; reject C4 — причина` rejects `C4` even if it is a `major`.
+
+Findings the answer does not mention are not applied. After parsing, list them in one line — «без решения: F4, P7» — and ask once whether to decide them now; if not, they stay without a decision. In spec mode they go to the Review log as «не рассмотрено» and may be raised again by the next run.
+
+Conflicts require an explicit choice of a side — accepting both findings of a pair is not possible, also not through a group form: a group form leaves both findings of a conflict without a decision.
+
+If the answer did not parse, or mentions an id that is not in the report — show what exactly you did not understand and ask again. Do not guess and do not apply a partially parsed answer.
+
+Do not poll finding by finding: with dozens of findings that is dozens of rounds, more expensive than the review itself.
 
 ## Phase 5. Edits
 
@@ -66,11 +75,12 @@ Append a `## Review log` section to the end of the spec (or a new subsection to 
 
     ## Review log
 
-    ### 2026-07-24 — expert-panel (Pike, Cheney, Ford, Stonebraker)
+    ### 2026-10-22 — expert-panel (Pike, Cheney, Ford, Stonebraker, Valsorda)
     Принято: C2 — добавлено поведение при недоступности каталога; S1 — схема
     переведена на составной ключ.
     Отклонено: F3 — вынос в отдельный сервис. Причина: преждевременно,
     объём не оправдан.
+    Не рассмотрено: P6, V4.
 
 Take the date from the system environment, the panel composition — the actual one.
 
