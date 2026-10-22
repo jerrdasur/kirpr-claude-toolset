@@ -1,57 +1,57 @@
-# Wrap-up — сборка документа
+# Wrap-up — assembling the document
 
-Запускается по прямой команде пользователя. Заканчивается файлом `<slug>.md` в каталоге сессии; slug берётся из шапки `state.md`.
+Runs on the user's direct command. Ends with a `<slug>.md` file in the session directory; the slug is taken from the `state.md` header.
 
-## Шаг 1. Конспект
+## Step 1. Outline
 
-Прочитай `journal.md` целиком и `state.md`. Разложи всё по структуре из раздела «Структура документа» ниже.
+Read `journal.md` in full and `state.md`. Lay everything out in the structure from the «Document structure» section below.
 
-Это ещё не текст, а полная фактура в нужном порядке. Редактурой здесь не занимайся.
+This is not text yet but the complete set of facts in the right order. Do no editing here.
 
-Разделы по линзам — это линзы из `## Линзы` в `state.md`, в том же порядке. Линза, которую пользователь исключил из сессии, раздела не получает: `.kirpr/grill-me/lenses.md` хранит линзы всего проекта, а не этой сессии, и здесь не читается.
+Per-lens sections are the lenses from `## Линзы` in `state.md`, in the same order. A lens the user excluded from the session gets no section: `.kirpr/grill-me/lenses.md` holds the lenses of the whole project, not of this session, and is not read here.
 
-Для каждого решения назови основание одним из трёх видов:
+For every decision, name its basis as one of three kinds:
 
-| Основание | Как выглядит |
+| Basis | What it looks like |
 |---|---|
-| ответ пользователя | `Ваш ответ (раунд 12)` |
-| найденный факт | `Факт: ARPU конкурента $8/место [ссылка]` |
-| допущение | `Допущение: конверсия из триала не ниже 12%` |
+| the user's answer | `Ваш ответ (раунд 12)` |
+| a found fact | `Факт: ARPU конкурента $8/место [ссылка]` |
+| an assumption | `Допущение: конверсия из триала не ниже 12%` |
 
-**Три вида не смешиваются.** Допущение, доехавшее до документа под видом факта, и есть главный способ провалить продуктовую гипотезу. Если основание неясно из журнала — это допущение, а не факт.
+**The three kinds are not mixed.** An assumption that reached the document disguised as a fact is the main way to sink a product hypothesis. If the basis is unclear from the journal — it is an assumption, not a fact.
 
-Сохрани конспект во временный файл в каталоге сессии — `draft.md`.
+Save the outline to a temporary file in the session directory — `draft.md`.
 
-## Шаг 2. Редактура субагентом
+## Step 2. Editing by a subagent
 
-Проверь, что файл `~/.local/share/kirpr/prompts/text.md` существует. Нет — иди в шаг 3.
+Check that the file `~/.local/share/kirpr/prompts/text.md` exists. If not — go to step 3.
 
-Запусти одного субагента. В промпт входит:
+Launch one subagent. The prompt includes:
 
-- Роль: «Прочитай файл `~/.local/share/kirpr/prompts/text.md` и следуй ему при работе с текстом.»
-- Вход: абсолютный путь к `draft.md`.
-- Выход: абсолютный путь к `<slug>.md` в каталоге сессии.
-- Задача: отредактировать конспект в информационном стиле и записать результат.
-- **Ограничение: режет слова, не факты.** Ни одно число, ссылка, открытый вопрос, неизвестное или отброшенная формулировка из конспекта не исчезает и не сливается с соседним. Ни один раздел не выбрасывается, даже пустой — пустой раздел это тоже результат прожарки. Информационный стиль здесь про то, как сказано, а не про то, сколько осталось.
-- Ограничение: структуру разделов не менять, заголовки не переименовывать.
+- Role: «Прочитай файл `~/.local/share/kirpr/prompts/text.md` и следуй ему при работе с текстом.»
+- Input: absolute path to `draft.md`.
+- Output: absolute path to `<slug>.md` in the session directory.
+- Task: edit the outline in the informational style and write the result.
+- **Restriction: cuts words, not facts.** Not a single number, link, open question, unknown or discarded statement from the outline disappears or merges with a neighbor. No section is thrown out, even an empty one — an empty section is also a grilling result. The informational style here is about how it is said, not about how much is left.
+- Restriction: do not change the section structure, do not rename headings.
 
-Субагент, а не ты сам: журнал и итерации редактуры не должны оседать в основном контексте там, где он уже забит всей сессией. Если делегация недоступна, отредактируй `draft.md` в `<slug>.md` и выполни ту же сверку черновика с чистовиком по пяти категориям в текущей сессии; прямо сообщи пользователю о fallback.
+A subagent, not you: the journal and the editing iterations must not settle in the main context where it is already filled with the whole session. If delegation is unavailable, edit `draft.md` into `<slug>.md` yourself and do the same five-category comparison of draft and final in the current session; tell the user plainly about the fallback.
 
-Когда субагент вернулся — сверь результат с `draft.md` по пяти категориям: разделы, ссылки, числа, открытые вопросы и неизвестные, отброшенные формулировки. Проверяешь не «похоже ли», а есть ли каждый элемент: пропавшее число и слитые в один два открытых вопроса выглядят как аккуратный текст. Чего-то не хватает — верни это из `draft.md` в результат и перечисли пользователю, что пришлось вернуть. После сверки удали `draft.md`.
+When the subagent returns — compare the result with `draft.md` in five categories: sections, links, numbers, open questions and unknowns, discarded statements. You check not «does it look alike» but whether every element is present: a lost number and two open questions merged into one look like tidy text. Something is missing — restore it from `draft.md` into the result and list to the user what had to be restored. After the comparison, delete `draft.md`.
 
-## Шаг 3. Если text.md не найден
+## Step 3. If text.md is not found
 
-Скажи прямо: промпт `kirpr:text` не установлен, чистовик собрать нечем. Переименуй `draft.md` в `<slug>.md` и предложи прогнать Codex `$kirpr-text` или Claude Code `/kirpr:text` руками по этому файлу.
+Say plainly: the `kirpr:text` prompt is not installed, there is nothing to produce the final text with. Rename `draft.md` to `<slug>.md` and suggest running Codex `$kirpr-text` or Claude Code `/kirpr:text` by hand on this file.
 
-**Стиль по памяти не имитируй.** «Написан через kirpr:text» — это про конкретный промпт, а не про общее представление об информационном стиле.
+**Do not imitate the style from memory.** «Написан через kirpr:text» refers to the specific prompt, not to a general notion of the informational style.
 
-## Шаг 4. Завершение
+## Step 4. Completion
 
-Покажи путь к документу и число раундов. Коммит не делай.
+Show the path to the document and the number of rounds. Do not commit.
 
-Скажи, что каталог сессии остаётся на диске и Codex `$grill-me <путь к каталогу>` или Claude Code `/grill-me <путь к каталогу>` поднимет разговор с той же точки.
+Say that the session directory stays on disk and Codex `$grill-me <путь к каталогу>` or Claude Code `/grill-me <путь к каталогу>` resumes the conversation from the same point.
 
-## Структура документа
+## Document structure
 
 ```markdown
 # <Предмет>
@@ -90,6 +90,6 @@
 Формулировки, не пережившие прожарку, вместе с причиной и номером раунда.
 ```
 
-Резюме сверху — чтобы документ читался чужим человеком за минуту. Оно пишется последним, когда все разделы по линзам уже собраны.
+The summary is at the top so that a stranger can read the document in a minute. It is written last, when all per-lens sections are already assembled.
 
-Раздел «Что развалилось по ходу» хранит отброшенное вместе с причиной. Через месяц это единственное, что удержит от возврата к уже отброшенному, — поэтому он не сокращается и не выбрасывается, даже если выглядит списком чужих ошибок.
+The «Что развалилось по ходу» section keeps what was discarded together with the reason. A month later it is the only thing that prevents a return to what was already discarded — so it is not shortened or dropped, even if it looks like a list of someone else's mistakes.

@@ -1,46 +1,46 @@
-# Фаза 0 — сборка линз
+# Phase 0 — assembling the lenses
 
-Заканчивается согласованным набором линз, созданным каталогом сессии и первыми версиями `journal.md` и `state.md`. До этого ни один вопрос пользователю не задаётся.
+Ends with an agreed set of lenses, a created session directory and the first versions of `journal.md` and `state.md`. Until then not a single question is asked of the user.
 
-## Шаг 1. Предмет
+## Step 1. The subject
 
-Формулировка пришла аргументом или из файла. Если она короче одного предложения либо непонятна — попроси развернуть. Один уточняющий заход, не допрос: прожарка начинается после фазы 0, а не внутри неё.
+The statement arrived as an argument or from a file. If it is shorter than one sentence or unclear — ask to expand it. One clarifying pass, not an interrogation: grilling begins after Phase 0, not inside it.
 
-## Шаг 2. Разведка проекта
+## Step 2. Project reconnaissance
 
-Прочитай `AGENTS.md`, `CLAUDE.md`, `README.md`, содержимое `docs/`, если они есть, и посмотри структуру каталогов верхнего уровня. Сделай grep по ключевым терминам предмета — именам продуктов, сущностей, сервисов.
+Read `AGENTS.md`, `CLAUDE.md`, `README.md`, the contents of `docs/` if they exist, and look at the top-level directory structure. Grep for the subject's key terms — names of products, entities, services.
 
-Задача — понять, что за продукт и на чём он стоит. Кодовую базу не вычитывай: линзы выводятся из природы продукта, а не из реализации.
+The goal is to understand what the product is and what it stands on. Do not read through the codebase: lenses are derived from the nature of the product, not from the implementation.
 
-Если репозитория нет или он пуст — это нормально. Гипотезу можно жарить и без кода, просто линзы выведутся только из предмета.
+If there is no repository or it is empty — that is fine. A hypothesis can be grilled without code; the lenses will just be derived from the subject alone.
 
-## Шаг 3. Существующие линзы
+## Step 3. Existing lenses
 
-Сначала определи активный файл линз:
+First determine the active lens file:
 
-- `.kirpr/grill-me/lenses.md` есть — читай и записывай только его.
-- `.kirpr/grill-me/lenses.md` нет и `.claude/grill-me/lenses.md` нет — спроси обычное подтверждение пути перед созданием `.kirpr/grill-me/lenses.md`; до подтверждения не создавай файл.
-- `.kirpr/grill-me/lenses.md` нет, а `.claude/grill-me/lenses.md` есть — покажи пользователю оба пути и спроси, копировать ли legacy-файл в `.kirpr/grill-me/lenses.md`.
-  - Копирование одобрено — скопируй один раз, затем читай и записывай новый файл.
-  - Копирование отклонено — читай legacy-файл и не записывай его.
+- `.kirpr/grill-me/lenses.md` exists — read and write only it.
+- Neither `.kirpr/grill-me/lenses.md` nor `.claude/grill-me/lenses.md` exists — ask the usual path confirmation before creating `.kirpr/grill-me/lenses.md`; do not create the file before confirmation.
+- `.kirpr/grill-me/lenses.md` does not exist but `.claude/grill-me/lenses.md` does — show the user both paths and ask whether to copy the legacy file to `.kirpr/grill-me/lenses.md`.
+  - Copy approved — copy once, then read and write the new file.
+  - Copy declined — read the legacy file and do not write it.
 
-Каждая секция `## <Имя>` активного файла — сохранённая линза. Для всех новых записей используй `.kirpr/grill-me/lenses.md`.
+Every `## <Имя>` section of the active file is a saved lens. For all new records use `.kirpr/grill-me/lenses.md`.
 
-## Шаг 4. Вывод набора
+## Step 4. Deriving the set
 
-Составь набор линз под этот проект и этот предмет. Для каждой:
+Compose a set of lenses for this project and this subject. For each:
 
-- **имя** — одно-два слова;
-- **что проверяет** — одна строка;
-- **почему нужна именно здесь** — одна строка, со ссылкой на факт из шага 1 или 2.
+- **name** — one or two words;
+- **what it checks** — one line;
+- **why it is needed here specifically** — one line, referring to a fact from step 1 or 2.
 
-**Линза без третьего пункта не предлагается.** Учебниковый список из восьми пунктов, одинаковый для любого проекта, — это не набор линз, а отписка. Если продукт внутренний, линзы про go-to-market и конкурентов не нужны. Если гипотеза про цену, линза про монетизацию не одна, а три.
+**A lens without the third item is not proposed.** A textbook list of eight items, identical for any project, is not a set of lenses but a brush-off. If the product is internal, go-to-market and competitor lenses are not needed. If the hypothesis is about price, there is not one monetization lens but three.
 
-Разумный объём — от четырёх до восьми линз. Меньше четырёх — предмет разобран не будет; больше восьми — первый проход не закончится никогда.
+A reasonable size is four to eight lenses. Fewer than four — the subject will not be covered; more than eight — the first pass will never end.
 
-## Шаг 5. Согласование
+## Step 5. Agreement
 
-Покажи пользователю два списка отдельно:
+Show the user two lists separately:
 
 ```
 Из активного файла линз:
@@ -52,15 +52,15 @@
   • миграция — у вас 400 существующих команд на старом тарифе
 ```
 
-Первая сессия в проекте — файла линз нет, первый список пустой: показывай только второй.
+First session in the project — there is no lens file, the first list is empty: show only the second.
 
-Спроси, что убрать и что добавить. **Раунды не начинаются без ответа.** Пользователь молчит или отвечает неоднозначно — переспроси.
+Ask what to remove and what to add. **Rounds do not start without an answer.** The user is silent or answers ambiguously — ask again.
 
-## Шаг 6. Запись линз
+## Step 6. Recording the lenses
 
-Согласованный набор запиши в `.kirpr/grill-me/lenses.md`; каталог `.kirpr/grill-me/` создай, если его нет. Если пользователь отклонил копирование legacy-файла, не записывай линзы: объясни, что запись возможна только после согласия на новый путь.
+Write the agreed set to `.kirpr/grill-me/lenses.md`; create the `.kirpr/grill-me/` directory if it does not exist. If the user declined copying the legacy file, do not write the lenses: explain that writing is possible only after consent to the new path.
 
-Формат секции:
+Section format:
 
 ```markdown
 ## Монетизация
@@ -68,28 +68,28 @@
 Добавлена: 2026-08-12, сессия «биллинг для команд».
 ```
 
-Новые линзы дописывай в конец. Существующие не трогай и не удаляй — даже те, которые пользователь исключил из этой сессии: исключение из набора и удаление из проекта это разные вещи. Удаляй только по явной просьбе.
+Append new lenses at the end. Do not touch or delete existing ones — even those the user excluded from this session: excluding from the set and deleting from the project are different things. Delete only on an explicit request.
 
-Дату бери из системного окружения.
+Take the date from the system environment.
 
-## Шаг 7. Каталог сессии
+## Step 7. Session directory
 
-Предложи путь и дождись подтверждения:
+Propose a path and wait for confirmation:
 
 ```
 Каталог сессии: docs/grill-me/2026-08-12-billing/
 Годится или указать другой?
 ```
 
-Slug выведи из предмета — короткий, латиницей, через дефис. Дата — из системного окружения.
+Derive the slug from the subject — short, Latin letters, hyphenated. The date — from the system environment.
 
-**Без подтверждения ничего не создавай.** Каталог может оказаться чужим репозиторием.
+**Create nothing without confirmation.** The directory may turn out to be someone else's repository.
 
-После подтверждения создай каталог и два файла по форматам из `SKILL.md`:
+After confirmation, create the directory and two files per the formats in `SKILL.md`:
 
-- `journal.md` — заголовок, дата, каталог, раздел `## Исходная формулировка` с дословным входом пользователя;
-- `state.md` — предмет, каталог, slug, `**Проход:** 1`, первая линза как текущая, `**Раундов:** 0`, секция `## Линзы` со списком линз и отметками `[ ]`, пустые секции `## Решено`, `## Открытые узлы`, `## Неизвестные`, `## Ожидают факта`, `## Пропущено в этом проходе`.
+- `journal.md` — title, date, directory, a `## Исходная формулировка` section with the user's input verbatim;
+- `state.md` — subject, directory, slug, `**Проход:** 1`, the first lens as current, `**Раундов:** 0`, a `## Линзы` section listing the lenses with `[ ]` marks, empty sections `## Решено`, `## Открытые узлы`, `## Неизвестные`, `## Ожидают факта`, `## Пропущено в этом проходе`.
 
-## Завершение
+## Completion
 
-Скажи одной строкой: состав линз, каталог сессии, с какой линзы начинаем. Дальше переходи к циклу раунда из `SKILL.md` — подтверждения на это уже не спрашивай, его дал шаг 5.
+Say in one line: the lens composition, the session directory, which lens we start with. Then go to the round loop in `SKILL.md` — do not ask for confirmation for that; step 5 already gave it.
